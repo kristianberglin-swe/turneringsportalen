@@ -532,7 +532,7 @@ async function deleteStudent(id,classId){
 }
 
 
-async async async async async function loadTournaments(){
+async function loadTournaments(){
   const {data,error}=await db.from("tournaments").select("*").order("created_at",{ascending:false});
   if(error)throw error; cache.tournaments=data||[];
   for(const id of ["signupTournament","publicTournament"]){
