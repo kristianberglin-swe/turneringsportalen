@@ -30,7 +30,7 @@ button{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:point
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
-input,select{width:100%;border:1px solid #cfd7df;border-radius:9px;padding:10px;font-size:14px;background:#fff}
+input,select,textarea{width:100%;border:1px solid #cfd7df;border-radius:9px;padding:10px;font-size:14px;background:#fff;font-family:Arial,Helvetica,sans-serif} textarea{resize:vertical;min-height:120px}
 .hidden{display:none!important}
 .small{font-size:12px;color:var(--muted)} .muted{color:var(--muted)}
 .badge{display:inline-block;padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--green2);font-size:12px;font-weight:700}
@@ -81,7 +81,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 
 <section id="signup" class="hidden">
   <div class="card">
-    <h2 id="signupTitle">Anmäl lag</h2>
+    <h2 id="signupTitle">Anmäl lag</h2><div id="signupInfo" class="note hidden" style="white-space:pre-wrap;margin-bottom:14px"></div>
     <div id="signupTournamentPicker">
       <label>Turnering</label><select id="signupTournament" onchange="refreshSignupTitle()"></select>
     </div>
@@ -116,28 +116,44 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 </section>
 
 <section id="admin" class="hidden">
-  <div id="loginCard" class="card">
-    <h2>Admininloggning</h2>
-    <div class="grid2"><div><label>E-post</label><input id="loginEmail" type="email"></div><div><label>Lösenord</label><input id="loginPassword" type="password"></div></div>
-    <div class="actions"><button class="primary" onclick="login()">Logga in</button></div><div id="loginMsg"></div>
-  </div>
-
-  <div id="adminArea" class="hidden">
-    <div class="actions" style="margin-bottom:12px"><button class="secondary" onclick="logout()">Logga ut</button></div>
-
+  <div id="adminArea">
     <div id="adminHome">
       <div class="card">
-        <h2>1. Skapa turnering</h2>
-        <div class="grid4">
-          <div><label>Namn</label><input id="newName" placeholder="Volleyboll 2026"></div>
-          <div><label>Resultat räknas som</label><select id="newScoreType"><option value="poäng">Poäng</option><option value="mål">Mål</option></select></div>
-          <div><label>Poäng för vinst</label><input id="newWinPoints" type="number" value="3"></div>
-          <div><label>Poäng för oavgjort</label><input id="newDrawPoints" type="number" value="1"></div>
+        <h2>Admin</h2>
+        <p class="small">Välj om du vill skapa en ny turnering eller administrera en tidigare skapad turnering.</p>
+
+        <div class="grid2">
+          <div class="tournament-card">
+            <h3>1. Skapa ny turnering</h3>
+            <p class="small">Ange namn och information. Därefter skapas en unik anmälningslänk.</p>
+            <label>Turneringens namn</label>
+            <input id="newName" placeholder="Volleyboll 2026">
+            <label>Information om turneringen</label>
+            <textarea id="newInfo" rows="6" placeholder="Exempel: datum, plats, sista anmälningsdag, regler och annan information till eleverna."></textarea>
+            <div class="actions">
+              <button id="createTournamentBtn" class="primary" onclick="createTournament()">Skapa turnering och anmälningslänk</button>
+            </div>
+            <div id="createMsg" style="margin-top:10px"></div>
+          </div>
+
+          <div class="tournament-card">
+            <h3>2. Administrera tidigare turnering</h3>
+            <p class="small">Välj en tidigare skapad turnering för att se anmälningar, skapa grupper och spelschema, publicera och skriva in resultat.</p>
+            <label>Välj turnering</label>
+            <select id="adminTournamentSelect">
+              <option value="">Välj turnering</option>
+            </select>
+            <div class="actions">
+              <button class="secondary" onclick="openSelectedTournament()">Administrera turnering</button>
+            </div>
+          </div>
         </div>
-        <div class="actions"><button id="createTournamentBtn" class="primary" onclick="createTournament()">Skapa turnering</button></div>
-        <div id="createMsg" style="margin-top:10px"></div>
       </div>
-      <div class="card"><h2>Mina turneringar</h2><div id="tournamentList"></div></div>
+
+      <div class="card">
+        <h2>Mina turneringar</h2>
+        <div id="tournamentList"></div>
+      </div>
     </div>
 
     <div id="editor" class="hidden">
@@ -163,6 +179,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
       <div id="admin-overview" class="adminsection">
         <div class="card">
           <h2>Turnering</h2>
+          <label>Information om turneringen</label><textarea id="editInfo" rows="6" onchange="saveTournamentSettings()"></textarea>
           <div class="grid4">
             <div><label>Resultattyp</label><select id="editScoreType" onchange="saveTournamentSettings()"><option value="poäng">Poäng</option><option value="mål">Mål</option></select></div>
             <div><label>Poäng för vinst</label><input id="editWinPoints" type="number" onchange="saveTournamentSettings()"></div>
@@ -223,7 +240,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
       </div>
     </div>
   </div>
-</section>
+</section></section>
 </main>
 
 <script>
@@ -248,7 +265,7 @@ function dtLocal(iso){if(!iso)return"";const d=new Date(iso),z=n=>String(n).padS
 function setMode(m){
   ["signup","public","admin","coach"].forEach(x=>{$(x).classList.toggle("hidden",x!==m);const b=$("b-"+x);if(b)b.classList.toggle("active",x===m)});
   if(m!=="coach"){const u=new URL(location.href);u.searchParams.set("mode",m);if(m!=="signup"&&m!=="public")u.searchParams.delete("t");u.searchParams.delete("token");history.replaceState({},'',u)}
-  if(m==="admin")checkAuth();
+  if(m==="admin")loadAdminHome();
   if(m==="signup")prepareSignup();
   if(m==="public")loadPublic();
   if(m==="coach")loadCoach();
@@ -275,6 +292,9 @@ async function prepareSignup(){
 function refreshSignupTitle(){
   const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
   $("signupTitle").textContent=t?`${t.name} – anmäl lag`:"Anmäl lag";
+  const info=$("signupInfo");
+  if(t&&t.information){info.textContent=t.information;info.classList.remove("hidden")}
+  else{info.textContent="";info.classList.add("hidden")}
 }
 function classChanged(){
   const c=$("classSelect").value;$("teamName").value=c;
@@ -314,20 +334,33 @@ async function login(){
 async function logout(){await db.auth.signOut();adminTournamentId=null;$("editor").classList.add("hidden");$("adminHome").classList.remove("hidden");checkAuth()}
 
 async function createTournament(){
-  const btn=$("createTournamentBtn"),msg=$("createMsg"),name=$("newName").value.trim();
+  const btn=$("createTournamentBtn"),msg=$("createMsg"),name=$("newName").value.trim(),info=$("newInfo").value.trim();
   if(!name){msg.innerHTML='<div class="error">Skriv ett namn på turneringen.</div>';return}
   btn.disabled=true;btn.textContent="Skapar…";msg.innerHTML="";
-  const payload={name,score_type:$("newScoreType").value,qualifiers:4,win_points:Number($("newWinPoints").value)||3,draw_points:Number($("newDrawPoints").value)||1,loss_points:0,published:false};
+  const payload={name,information:info,score_type:"poäng",qualifiers:4,win_points:3,draw_points:1,loss_points:0,published:false};
   const {data,error}=await db.from("tournaments").insert(payload).select().single();
-  btn.disabled=false;btn.textContent="Skapa turnering";
+  btn.disabled=false;btn.textContent="Skapa turnering och anmälningslänk";
   if(error){msg.innerHTML=`<div class="error"><b>Kunde inte skapa turneringen.</b><br>${esc(error.message)}</div>`;return}
-  $("newName").value="";msg.innerHTML='<div class="success">Turneringen är skapad.</div>';
-  await loadTournaments();renderTournamentList();await openTournament(data.id);
+  const link=signupUrl(data.id);
+  $("newName").value="";$("newInfo").value="";
+  msg.innerHTML=`<div class="success"><b>Turneringen är skapad.</b><br><br><b>Anmälningslänk:</b><div class="linkbox"><input id="createdSignupLink" value="${esc(link)}" readonly><button class="blue" onclick="copyText($('createdSignupLink').value)">Kopiera anmälningslänk</button></div></div>`;
+  await loadAdminHome();
 }
 
 async function loadAdminHome(){
-  await loadTournaments();renderTournamentList();
+  await loadTournaments();
+  renderTournamentList();
+  const sel=$("adminTournamentSelect");
+  if(sel){
+    sel.innerHTML='<option value="">Välj turnering</option>'+cache.tournaments.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  }
 }
+function openSelectedTournament(){
+  const sel=$("adminTournamentSelect");
+  if(!sel || !sel.value){ alert("Välj en turnering först."); return; }
+  openTournament(sel.value);
+}
+
 function renderTournamentList(){
   if(!cache.tournaments.length){$("tournamentList").innerHTML='<span class="small">Inga turneringar ännu.</span>';return}
   $("tournamentList").innerHTML=`<div class="grid2">${cache.tournaments.map(t=>`<div class="tournament-card"><h3>${esc(t.name)}</h3><div class="actions"><span class="badge">${t.published?"Publicerad":"Ej publicerad"}</span><span class="badge">${esc(t.score_type)}</span></div><div class="actions" style="margin-top:12px"><button class="primary" onclick="openTournament('${t.id}')">Öppna</button><button class="blue" onclick="copyText('${signupUrl(t.id)}')">Anmälningslänk</button><button class="secondary" onclick="copyText('${publicUrl(t.id)}')">Publiklänk</button></div></div>`).join("")}</div>`;
@@ -338,7 +371,7 @@ async function openTournament(id){
   adminTournamentId=id;$("adminHome").classList.add("hidden");$("editor").classList.remove("hidden");
   await loadTournaments();await loadTournamentData();
   const t=currentTournament();$("editTitle").textContent=t.name;
-  $("editScoreType").value=t.score_type||"poäng";$("editQualifiers").value=String(t.qualifiers||4);
+  $("editInfo").value=t.information||"";$("editScoreType").value=t.score_type||"poäng";$("editQualifiers").value=String(t.qualifiers||4);
   $("editWinPoints").value=t.win_points??3;$("editDrawPoints").value=t.draw_points??1;
   $("editDate").value=t.tournament_date||"";$("editStartTime").value=(t.start_time||"09:00").slice(0,5);
   $("editMatchMinutes").value=t.match_minutes||10;$("editBreakMinutes").value=t.break_minutes??2;$("editCourts").value=String(t.courts||2);
@@ -357,7 +390,7 @@ async function loadTournamentData(){
   cache.teams=a.data||[];cache.groups=b.data||[];cache.matches=c.data||[];cache.groupTeams=(d.data||[]).filter(gt=>cache.groups.some(g=>g.id===gt.group_id));
 }
 async function saveTournamentSettings(){
-  const payload={score_type:$("editScoreType").value,qualifiers:Number($("editQualifiers").value)||4,win_points:Number($("editWinPoints").value)||3,draw_points:Number($("editDrawPoints").value)||1,loss_points:0,tournament_date:$("editDate").value||null,start_time:$("editStartTime").value||"09:00",match_minutes:Number($("editMatchMinutes").value)||10,break_minutes:Number($("editBreakMinutes").value)||0,courts:Number($("editCourts").value)||1};
+  const payload={information:$("editInfo").value,score_type:$("editScoreType").value,qualifiers:Number($("editQualifiers").value)||4,win_points:Number($("editWinPoints").value)||3,draw_points:Number($("editDrawPoints").value)||1,loss_points:0,tournament_date:$("editDate").value||null,start_time:$("editStartTime").value||"09:00",match_minutes:Number($("editMatchMinutes").value)||10,break_minutes:Number($("editBreakMinutes").value)||0,courts:Number($("editCourts").value)||1};
   const {error}=await db.from("tournaments").update(payload).eq("id",adminTournamentId);if(error)return alert(error.message);
   await loadTournaments();renderProgress();
 }
