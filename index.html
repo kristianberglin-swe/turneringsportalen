@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Volleyboll 2026</title>
+<style>
+:root{--bg:#f4f7f8;--card:#fff;--text:#172026;--muted:#667085;--line:#dfe4e8;--accent:#0f6b4f;--accent2:#084c39;--blue:#2457a6;--soft:#eaf5f1;--danger:#b42318}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;padding:28px 18px}
+.wrap{max-width:1180px;margin:auto;padding:18px}
+header .wrap{padding:0 18px}
+h1{margin:0;font-size:34px} header p{margin:7px 0 0;opacity:.9}
+.modebar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+button{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
+.modebtn{background:#e7ecef;color:#24313a} .modebtn.active{background:var(--accent);color:white}
+.primary{background:var(--accent);color:white} .secondary{background:#e9eef2;color:#24313a} .danger{background:#fee4e2;color:var(--danger)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 4px 18px rgba(15,23,42,.05);margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
+input,select{width:100%;border:1px solid #cfd7df;border-radius:9px;padding:10px;font-size:14px;background:#fff}
+.player-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.player{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid var(--line);border-radius:9px;background:#fafbfc}
+.player input{width:auto}
+.hidden{display:none} .small{font-size:12px;color:var(--muted)} .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.success{background:#ecfdf3;border:1px solid #abefc6;color:#067647;padding:12px;border-radius:10px}
+.note{background:#fff4e5;border:1px solid #ffd59a;color:#7a4a00;padding:12px;border-radius:10px}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--accent2);font-size:12px;font-weight:700}
+.qualify{background:#e8f2ff;color:#174ea6}
+.team-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfd}
+.team-card h3{margin:0 0 6px}
+table{width:100%;border-collapse:collapse;min-width:720px} th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:14px} th{font-size:12px;text-transform:uppercase;background:#f8fafb}
+.tablewrap{overflow:auto}
+.match{display:grid;grid-template-columns:90px 90px 1fr 55px 55px 1fr;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.teamright{text-align:right} .score{width:55px;text-align:center}
+.linkbox{display:flex;gap:8px;align-items:center;margin-top:8px} .linkbox input{font-family:monospace;font-size:12px}
+.readonly{background:#f2f4f7;color:#475467}
+@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}.player-list{grid-template-columns:1fr}.match{grid-template-columns:70px 70px 1fr 48px 48px 1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>Volleyboll 2026</h1><p>Anmäl lag, följ resultat och administrera turneringen.</p></div></header>
+<main class="wrap">
+<div class="modebar">
+<button class="modebtn" id="btn-signup" onclick="setMode('signup')">Anmälan</button>
+<button class="modebtn" id="btn-public" onclick="setMode('public')">Resultat</button>
+<button class="modebtn" id="btn-admin" onclick="setMode('admin')">Admin</button>
+</div>
+
+<section id="signup-mode" class="hidden">
+<div class="card">
+<h2>Anmäl lag</h2>
+<div class="grid2">
+<div>
+<label>Turnering</label><input value="Volleyboll 2026" class="readonly" readonly>
+<label>Klass</label>
+<select id="classSelect" onchange="classChanged()"><option value="">Välj klass</option></select>
+<label>Lagnamn</label><input id="teamName" class="readonly" readonly placeholder="Välj klass">
+<label>Coach</label><input id="coachName" placeholder="För- och efternamn">
+<label>Coachens e-post</label><input id="coachEmail" type="email" placeholder="namn@skola.se">
+</div>
+<div>
+<label>Välj spelare</label><div id="playerList" class="player-list"><div class="small">Välj först klass.</div></div>
+</div>
+</div>
+<div class="actions"><button class="primary" onclick="submitTeam()">Skicka anmälan</button></div>
+<div id="signupMessage" style="margin-top:12px"></div>
+</div>
+</section>
+
+<section id="coach-mode" class="hidden">
+<div class="card">
+<h2>Redigera lag</h2>
+<div id="coachEditor"></div>
+</div>
+</section>
+
+<section id="public-mode" class="hidden">
+<div class="card"><h2>Volleyboll 2026 – resultat</h2><p class="small">Här visas matcher, resultat, tabell och vilka lag som går vidare till slutspel.</p></div>
+<div class="card"><h2>Tabell</h2><div id="publicTable"></div></div>
+<div class="card"><h2>Matcher</h2><div id="publicMatches"></div></div>
+</section>
+
+<section id="admin-mode" class="hidden">
+<div class="card">
+<h2>Administrera Volleyboll 2026</h2>
+<div class="grid3">
+<div><label>Lag till slutspel</label><select id="qualifiers" onchange="saveSettings();renderAll()"><option value="2">2 lag</option><option value="4" selected>4 lag</option><option value="8">8 lag</option></select></div>
+<div><label>Matchtid</label><input id="matchMinutes" type="number" value="10" min="1"></div>
+<div><label>Antal planer</label><select id="courts"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+</div>
+<div class="actions"><button class="primary" onclick="generateSchedule()">Skapa / skapa om spelschema</button><button class="secondary" onclick="renderAll()">Uppdatera</button><button class="danger" onclick="clearAll()">Rensa all data</button></div>
+</div>
+<div class="card"><h2>Anmälda lag</h2><div id="adminTeams"></div></div>
+<div class="card"><h2>Resultatrapportering</h2><div id="adminMatches"></div></div>
+<div class="card"><h2>Tabell / slutspel</h2><div id="adminTable"></div></div>
+<div class="card"><h2>Länkar</h2>
+<label>Anmälningslänk</label><div class="linkbox"><input id="signupLink" readonly><button class="secondary" onclick="copyLink('signupLink')">Kopiera</button></div>
+<label>Resultatlänk</label><div class="linkbox"><input id="publicLink" readonly><button class="secondary" onclick="copyLink('publicLink')">Kopiera</button></div>
+</div>
+</section>
+</main>
+
+<script>
+const ROSTERS = {"7A1": ["Ariamard Philip", "Bernett John", "Ehde Alicia", "Elfström Julia", "Elman Harald", "Engström Lilly", "Georén Felix", "Gonzalez Smidhammar Matheo", "Hosayn Hêvi", "Immonen Leo", "Palfors Isabella", "Ponomareva Ekaterina", "Regamey Sebastian", "Richt Angelina", "Rosengren Elvira", "Sahlbäck Emma", "Sjövall Nicolina", "Smith Cheffil", "Stehlin Elsa", "Tauson Elias", "Victor Philip", "Vongjan Kanyanut", "Wallmark Mårtensson Thea", "Wesslau Erik", "Winge Emilia", "Wållgren Ted", "Xu Angel", "Ågren Anton"], "7A2": ["Bogdan-Popa Elisabet", "Cakste Filip", "Delgado Perez Simon Efrain", "Fosselius Tilda", "Georges Noa", "Gumbel Iris", "Hedin Beatrix", "Hell Thea", "Holmberg Oscar", "Jonson Eriksson Victor", "Julander Olivia", "Kroon Douglas", "Lindfors Tom", "Malmén Irma", "Mathiesen Hjalmar", "Mellbratt Skye", "Müntzing Louise Charlotta", "Nordlund Elsa", "Redin Vilhelm", "Rissler William", "Salih Sewa", "Seifert Lars", "Sherlund Bredin Lucy", "Ström Aston", "Tengwall Maximilian", "Thuresson Hedvig", "Viola Salvatore Vincent Nils", "Wallmander Hampus", "Wänström Alfred"], "7A3": ["Berhe Matthias Tedros", "Björknesjö Kasper", "Blomquist Isabelle", "Carping Julia", "Christensen Noah", "Eisen Aimée", "Ekblom Hallberg Jonas", "Fylking Victor", "Hani Mahdi", "Haraldsson Mathilda", "Janelid Nelson Filippa", "Karlsson Jack", "Lidman Cato", "Magnergård Hollmén Theo", "Moritz Ludwig", "Nordlund Ella", "Persson Isolde", "Plymoth Arthur", "Poehler Lily", "Prays Asplund Ida", "Ramteen Hugo", "Razavi Arman", "Sandhaag John", "Siösteen Frank", "Spens Alicia", "Stenborg Lundberg Eva", "Viktorsson Frans", "Ågerup Monié Jack", "Önnesjö Wilfred"], "7A4": ["Berg Juni", "Bohlin Vilhelm", "Drozdz Lilou", "Farag Noor", "Haglund Olsson Alva", "Johansson Daniel", "Karpsen Viktor", "Kjellberg Gustav", "Koskull CarlJohan", "Landell Alexandra", "Lindeborg Otto", "Littmarck Beatrix", "Löf Hjalmar", "Murray Wennberg Franca", "Nakauchi Lövqvist Cornelia", "Neufeld Theodor", "Niregård Elvin", "Olofsson Bianca", "Parchami Charlie", "Rosenberg Wilhelm", "Sabanovic Danijal", "Schullström Petter", "Strömblad Tove", "Tegnér Elle", "Trehag Nicole", "Waltré Fred", "Westin Silfverswärd Kalle", "Weström Bror"], "7A5": ["Ahmed Nubaid", "Ahrner Siri", "Angervall Aili", "Asghary Agnes", "Bergsten Julia", "Bergwitz-Larsen Linn", "Biba Noelio", "Bjärenstam Martinsson Jakob", "Chevalley Axel", "Forslund Jonsberg Ellen", "Fritz Filip", "Hallberg Henning", "Hosayn Rêbaz", "Johansson Lovisa", "Jäderstad Kåre", "Kupferschmidt Alma", "Levkovych Sviatoslav", "Lindén Eric", "Morberg Freja", "Nilsson Theodor", "Norrby Lou", "Oldén Hagelin Gustav", "Philipson Ted", "Rahimi Iman", "Sandmark Lovén Ludvig", "Svennberg Ivar", "Säfström Elias", "Wahlman Ella"], "8E1": ["Aarenstrup Alva", "Björklund Alexander", "Bodin Alexander", "Bohlin Tuva", "Ehnbom Edvin", "Ekman Jakob", "Forberg Siri", "Fritz Sofia", "Jusic Angelina", "Kernot Wilmer", "Leandersson Lou", "Lindahl Gustav", "Lindén Sophie", "Löf Schiött Edvin", "Marin Mia", "Martin Lily", "Meyer Jenna", "Nettelbladt Bill", "Nilsson Millanao Leoni", "Patocka Paul", "Patocka Vincent", "Pozo Chowaniec Aleksander", "Rafinia Arvin", "Rydholm Emily", "Sjödin Klara", "Williamsson Doris", "Wilton Simon"], "8E2": ["Ahmed Madzhit Bekir", "Björk Vincent", "Brost Carl", "Chahimi Östmark Cornelia", "Dahlin Nova", "Dai Andi", "Fallenius Alexandra", "Forsmark Wahlberg David", "Hallonstén Moa", "Hedborg Folke", "Högemark Emilia", "Janmark Stella", "Johansson Valentina", "Kilincaslan Kevin", "Kirshakov-Vestersten Otto", "Lantz Sophie", "Lindblom Alexander", "Lindblom William", "Lundgren Linn", "Löfgren Edith", "Moberg Corinne", "Niregård Rasmus", "Rifall Fred", "Sundbom Wång Sofia", "Wirta Vincent", "Ösmark Doris"], "8E3": ["Bernsten William", "Billborn Vilma", "Blomberg Stig", "Bröms Ly Gustav", "Carlberg Charlie", "Evestedt Almkvist Tove", "Göthlin Gustav", "Johansen Skarne Haldor", "Liljefors Greta", "Lilliestråle Lykke", "Lind Elise", "Liontos Leonidas", "Moussavi Nia Roksana", "Oscarius Sally", "Rössner Linnea", "Seflin Adrian", "Sjöholm Fred", "Skoog Tulle", "Sohrner Ida", "Struik Eveline", "Sundberg Liam", "Svavar Jakob", "Tränk Axel", "Weithz Mathilde", "Wigrup Lindgren Lowa"], "8E4": ["Aberra Jonathan", "Adamsson Josephine", "Bakali Hraiki Naser", "Brage Edith", "Carlsson Rasiwala Philip", "De Basso Ankido", "Edman Amanda", "Ellwén Astrid", "Forsberg Sigrid", "Frydrych Maya Magdalena", "Hermansson Hedda", "Hermansson Henry", "Karlsson Elsa", "Köpniwsky Lily", "Lantz Oscar", "Letsjö Edvin", "Palm Levis", "Persson Ruben", "Rosenlund Amanda", "Teterukovskiy Michael", "Tränk Erik", "Wallenrodhe Exadaktilou Alexia", "Wibergh Sasha", "Winberg Philip", "Wirgin Adam"], "8E5": ["Aspegren Hailie", "Blanksvärd Lovisa", "Bärnheim Ella", "Dahlstedt Zoe", "Ekstedt John", "Fahlgren Philip", "Fahrman Nils", "Flygare Albin", "Gemzell Philip", "Günther Josefine", "Hornberger Sam", "Hosk August", "Isaksson Ellen", "Jönsson Nysten Walter", "Linglöf Molly", "Mannerberg Axel", "Nordahl Vilmer", "Oldenburg Lea", "Shanazarizadeh Hellgren Felicia", "Sjölund Lily", "Spong Elliot", "Ström Evesäter Märta", "Tonat Rosa Milou", "von Bahr Ellie", "Waltré August", "Wigzell Svante", "Östman Leonie"], "9C1": ["Berg Elvira", "Bergsten Gustav", "Bjärenstam Martinsson August", "Brännström Lisa", "Böhlmark Ida", "Dahlberg Lovisa", "Elenius Engström Sixten", "Elman Arvid", "Finnman Lukas", "Fossum Iva", "Gabous-Bard Lucas", "Johansson Oskar", "Kashani Noah", "Lindfors Alice", "Manoukian William", "Pergefors Tilda", "Pålshammar Eriksson Oscar", "Redig Othilia", "Rigi Amineh", "Sevéus Wilmer", "Sperle Elin", "Stenlund Aron", "Stigerud Elsa", "Svensson Österling Oliver", "Taaha Zaid", "Tiger Edvard", "Wennberg Ivar", "Wimnell Carl"], "9C2": ["Ahlqvist Agnes", "Bergendal Oliver", "Bergsten Lukas", "Bhatt Högström Noa", "Brevik Nora", "Ekblom Hallberg Hugo", "Elfving Isabelle", "Helgesson Carl", "Karlsson Livia", "Lagergren Elias", "Lanner Reutenauer Olivia", "Liljengren Wrethling Ella", "Lindblad Hugo", "Lundh Milo", "Nordenhök Karolina", "Norling Jonnerberg Alicia", "Rahimi Arman", "Ranheimer Lucas", "Rouse Oscar William", "Savås Lindstedt Alicia", "Schumacher Qwerin Dag", "Sjöholm Da Silva Liam", "Sköld Axel", "Svantegård Lovisa", "Tsud Mykyta", "Wahlberg Axel", "Westerberg Liban", "Widaeus Elmehagen Jacob"], "9C3": ["Amedsson Leo", "Assefa Niyat", "Benson Ella", "Brodin Stella", "Cappelen-Smith Amelie", "Carles Atle", "D'Hondt Alexander", "Egan Ethan Gabriel", "Falconer Otto", "Falk Carl", "Fjell Laban", "Grant Max", "Kondratenko Hlib", "Landgren Gry", "Magnusson Emma", "Odhage Lyberg Astrid", "Panichewskaja Harriett", "Roness Strömberg Love", "Rödin Antonia", "Rörling Vilma", "Salim Yadd", "Schotte Bosse", "Skyhag Stella", "Valseth Espen", "Westergren Neo", "Xu Gavin"], "9D1": ["Advocaat Hasselrot Elias", "Barchan Valentin", "Beermann Lucas", "Bengts Jackie", "Björnstjerna Evelina", "Garmer Klefbom Viktor", "Hellström Olivia", "Hällström Lisa", "Johansson Hugo", "Lindevall Franka Matilda", "Lundberg Vera", "Mohamed Rundblom Kamil", "Morakinyo Eliza", "Pourmand Mehrad", "Ramnelius Otto", "Råsten Karl", "Scherp Jacob", "Seflin Amanda", "Sjöberg Astrid", "Sköldenberg Henry", "Stehlin Sixten", "Svaton Tua", "Sävenstrand Liv", "von Freymann Filippa", "Westgren Måns", "Zachrisson Felix", "Öström Arvid"], "9D2": ["Ahlberg Emma", "Atterwall August", "Bergwitz-Larsen Frank", "Botha Hedén Axel", "Böhlmark Robertson Karl", "Carlberg Sophie", "Dzelzkalejs Kristaps", "Eskilsson Frank Einar", "Falk Marcus", "George Selma", "Holmqvist Aksel", "Hummel Natali Savrutsky Gomes Gabriela", "Ingesson Pennström Iris", "Jobarteh Gerdén Kwanza", "Lagerström Siiri", "Lind Johannes", "Lind Sofie", "Lindstedt Vidar", "Martin Emilia", "Moberg-Søemod Alexander", "Norinder Ida", "Nylund Douglas", "Ovrén Caspar", "Palmqvist Edgren Majken", "Sperle Nils", "Stojanovic Marlon", "Vassiliou Iliana"], "9D3": ["af Robson Agnes", "Aryee Noel", "Bergdahl Lindkvist Elvira", "Bjelkelöv Brunn Liam", "Björnsdotter Björkwall Telma", "Blomberg Caspar", "Boman Valter", "Ekelund Linnéa", "Frid Asta", "Fürstenbach Gustaf", "Giese Viktoria", "Holmberg Tyra", "Hummel Natali Savrutsky Gomes Ricardo", "Immonen Juhani", "Lindberg Perner Felix", "Löndqvist Leo", "Moritz Julia", "Nakauchi Lövqvist Elsa", "Nour Cortoni Hedvig", "Rahem Dastan", "Santikos Vera", "Shihabi Farah", "Söderberg Frida", "Tjåland Salhoff Linn", "Victor Edvin", "Åstmark Jonathan"]};
+let state = JSON.parse(localStorage.getItem("volley2026_state_v2") || "null") || {teams:[],matches:[],settings:{qualifiers:4}};
+
+function save(){localStorage.setItem("volley2026_state_v2",JSON.stringify(state));}
+function escapeHtml(s){return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function randomToken(){return Array.from(crypto.getRandomValues(new Uint32Array(4))).map(n=>n.toString(36)).join("");}
+
+function initClasses(){
+  const sel=document.getElementById("classSelect");
+  Object.keys(ROSTERS).forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;sel.appendChild(o);});
+}
+function classChanged(){
+  const cls=document.getElementById("classSelect").value;
+  document.getElementById("teamName").value=cls||"";
+  renderPlayers();
+}
+function renderPlayers(){
+  const cls=document.getElementById("classSelect").value, el=document.getElementById("playerList");
+  if(!cls){el.innerHTML='<div class="small">Välj först klass.</div>';return;}
+  el.innerHTML=ROSTERS[cls].map(n=>`<label class="player"><input type="checkbox" name="player" value="${escapeHtml(n)}"><span>${escapeHtml(n)}</span></label>`).join("");
+}
+function submitTeam(){
+  const cls=document.getElementById("classSelect").value;
+  const coach=document.getElementById("coachName").value.trim();
+  const email=document.getElementById("coachEmail").value.trim();
+  const players=[...document.querySelectorAll('input[name="player"]:checked')].map(x=>x.value);
+  const msg=document.getElementById("signupMessage");
+  if(!cls||!coach||!email||players.length<2){msg.innerHTML='<div class="note">Välj klass, fyll i coach och e-post samt välj minst två spelare.</div>';return;}
+  if(state.teams.some(t=>t.className===cls)){msg.innerHTML='<div class="note">Den här klassen är redan anmäld. Använd coachens redigeringslänk för att ändra laget.</div>';return;}
+  const token=randomToken();
+  state.teams.push({id:Date.now(),className:cls,teamName:cls,coach,email,players,token});
+  state.matches=[];save();
+  const link=coachLink(token);
+  msg.innerHTML=`<div class="success"><b>${escapeHtml(cls)}</b> är anmält med ${players.length} spelare.<br><br><b>Coachens redigeringslänk:</b><div class="linkbox"><input id="newCoachLink" value="${escapeHtml(link)}" readonly><button class="secondary" onclick="copyLink('newCoachLink')">Kopiera</button></div><div class="small">Spara länken. Den används för att ändra spelare i laget.</div></div>`;
+  document.getElementById("coachName").value="";document.getElementById("coachEmail").value="";
+  renderAll();
+}
+function coachLink(token){const base=location.href.split("?")[0];return base+"?mode=coach&token="+encodeURIComponent(token);}
+function renderCoachEditor(){
+  const token=new URLSearchParams(location.search).get("token");
+  const team=state.teams.find(t=>t.token===token);
+  const el=document.getElementById("coachEditor");
+  if(!team){el.innerHTML='<div class="note">Länken är ogiltig eller laget finns inte i denna webbläsare.</div>';return;}
+  el.innerHTML=`<p><span class="badge">Volleyboll 2026</span></p><h3>${escapeHtml(team.className)}</h3>
+  <label>Coach</label><input id="editCoach" value="${escapeHtml(team.coach)}">
+  <label>Coachens e-post</label><input id="editEmail" type="email" value="${escapeHtml(team.email)}">
+  <label>Spelare</label><div class="player-list">${ROSTERS[team.className].map(n=>`<label class="player"><input type="checkbox" name="editPlayer" value="${escapeHtml(n)}" ${team.players.includes(n)?"checked":""}><span>${escapeHtml(n)}</span></label>`).join("")}</div>
+  <div class="actions"><button class="primary" onclick="saveCoachEdit('${team.token}')">Spara ändringar</button></div><div id="coachMsg" style="margin-top:12px"></div>`;
+}
+function saveCoachEdit(token){
+  const team=state.teams.find(t=>t.token===token);if(!team)return;
+  const players=[...document.querySelectorAll('input[name="editPlayer"]:checked')].map(x=>x.value);
+  if(players.length<2){document.getElementById("coachMsg").innerHTML='<div class="note">Välj minst två spelare.</div>';return;}
+  team.coach=document.getElementById("editCoach").value.trim();
+  team.email=document.getElementById("editEmail").value.trim();
+  team.players=players;save();document.getElementById("coachMsg").innerHTML='<div class="success">Ändringarna är sparade.</div>';
+}
+
+function setMode(mode){
+  ["signup","public","admin","coach"].forEach(m=>{document.getElementById(m+"-mode").classList.toggle("hidden",m!==mode);const b=document.getElementById("btn-"+m);if(b)b.classList.toggle("active",m===mode);});
+  if(mode!=="coach"){const u=new URL(location.href);u.searchParams.set("mode",mode);u.searchParams.delete("token");history.replaceState({}, "", u);}
+  renderAll(); if(mode==="coach")renderCoachEditor();
+}
+
+function renderTeams(){
+  const el=document.getElementById("adminTeams");
+  if(!state.teams.length){el.innerHTML='<div class="small">Inga lag anmälda ännu.</div>';return;}
+  el.innerHTML=`<div class="grid2">${state.teams.map(t=>`<div class="team-card"><h3>${escapeHtml(t.className)}</h3><p><b>Coach:</b> ${escapeHtml(t.coach)}<br><b>E-post:</b> ${escapeHtml(t.email)}</p><p><b>Spelare:</b><br>${t.players.map(escapeHtml).join(", ")}</p><label>Coachlänk</label><div class="linkbox"><input value="${escapeHtml(coachLink(t.token))}" readonly><button class="secondary" onclick="navigator.clipboard.writeText('${coachLink(t.token)}')">Kopiera</button></div><div class="actions"><button class="danger" onclick="deleteTeam(${t.id})">Ta bort lag</button></div></div>`).join("")}</div>`;
+}
+function deleteTeam(id){state.teams=state.teams.filter(t=>t.id!==id);state.matches=[];save();renderAll();}
+function roundRobin(names){const arr=[...names];if(arr.length%2)arr.push(null);const rounds=[];for(let r=0;r<arr.length-1;r++){const games=[];for(let i=0;i<arr.length/2;i++){const a=arr[i],b=arr[arr.length-1-i];if(a&&b)games.push([a,b]);}rounds.push(games);const fixed=arr[0],rest=arr.slice(1);rest.unshift(rest.pop());arr.splice(0,arr.length,fixed,...rest);}return rounds;}
+function generateSchedule(){if(state.teams.length<2){alert("Minst två lag måste vara anmälda.");return;}const courts=Number(document.getElementById("courts").value||2),rounds=roundRobin(state.teams.map(t=>t.teamName)),matches=[];let n=1;rounds.forEach((games,ri)=>games.forEach((g,gi)=>matches.push({id:n++,round:ri+1,court:(gi%courts)+1,home:g[0],away:g[1],homeScore:"",awayScore:""})));state.matches=matches;save();renderAll();}
+function updateScore(id,field,value){const m=state.matches.find(x=>x.id===id);if(!m)return;m[field]=value===""?"":Math.max(0,Number(value));save();renderTables();renderPublicMatches();}
+function getTable(){const stats={};state.teams.forEach(t=>stats[t.teamName]={team:t.teamName,p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0});state.matches.forEach(m=>{if(m.homeScore===""||m.awayScore===""||!stats[m.home]||!stats[m.away])return;const h=stats[m.home],a=stats[m.away],hs=Number(m.homeScore),as=Number(m.awayScore);h.p++;a.p++;h.gf+=hs;h.ga+=as;a.gf+=as;a.ga+=hs;if(hs>as){h.w++;a.l++;h.pts+=3}else if(hs<as){a.w++;h.l++;a.pts+=3}else{h.d++;a.d++;h.pts++;a.pts++;}});Object.values(stats).forEach(s=>s.gd=s.gf-s.ga);return Object.values(stats).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team,"sv"));}
+function tableHtml(){const rows=getTable(),q=Number(state.settings.qualifiers||4);if(!rows.length)return'<div class="small">Ingen tabell ännu.</div>';return `<div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>M</th><th>V</th><th>O</th><th>F</th><th>GM</th><th>IM</th><th>MS</th><th>P</th><th>Status</th></tr></thead><tbody>${rows.map((s,i)=>`<tr><td>${i+1}</td><td><b>${escapeHtml(s.team)}</b></td><td>${s.p}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${s.gf}</td><td>${s.ga}</td><td>${s.gd>0?"+":""}${s.gd}</td><td><b>${s.pts}</b></td><td>${i<q?'<span class="badge qualify">Slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div>`;}
+function renderTables(){document.getElementById("adminTable").innerHTML=tableHtml();document.getElementById("publicTable").innerHTML=tableHtml();}
+function renderAdminMatches(){const el=document.getElementById("adminMatches");if(!state.matches.length){el.innerHTML='<div class="small">Skapa spelschema när lagen är anmälda.</div>';return;}let html="",round=0;state.matches.forEach(m=>{if(m.round!==round){round=m.round;html+=`<h3>Omgång ${round}</h3>`;}html+=`<div class="match"><div><span class="badge">Plan ${m.court}</span></div><div class="small">Match ${m.id}</div><div class="teamright">${escapeHtml(m.home)}</div><input class="score" type="number" min="0" value="${m.homeScore}" onchange="updateScore(${m.id},'homeScore',this.value)"><input class="score" type="number" min="0" value="${m.awayScore}" onchange="updateScore(${m.id},'awayScore',this.value)"><div>${escapeHtml(m.away)}</div></div>`;});el.innerHTML=html;}
+function renderPublicMatches(){const el=document.getElementById("publicMatches");if(!state.matches.length){el.innerHTML='<div class="small">Spelschema är ännu inte publicerat.</div>';return;}let html="",round=0;state.matches.forEach(m=>{if(m.round!==round){round=m.round;html+=`<h3>Omgång ${round}</h3>`;}const result=(m.homeScore!==""&&m.awayScore!=="")?`<b>${m.homeScore}–${m.awayScore}</b>`:'<span class="small">Ej spelad</span>';html+=`<div class="match"><div><span class="badge">Plan ${m.court}</span></div><div class="small">Match ${m.id}</div><div class="teamright">${escapeHtml(m.home)}</div><div style="text-align:center">${result}</div><div></div><div>${escapeHtml(m.away)}</div></div>`;});el.innerHTML=html;}
+function saveSettings(){state.settings.qualifiers=Number(document.getElementById("qualifiers").value||4);save();}
+function makeLinks(){const base=location.href.split("?")[0];document.getElementById("signupLink").value=base+"?mode=signup";document.getElementById("publicLink").value=base+"?mode=public";}
+function copyLink(id){const el=document.getElementById(id);navigator.clipboard?.writeText(el.value);}
+function clearAll(){if(confirm("Rensa alla anmälda lag, matcher och resultat?")){state={teams:[],matches:[],settings:{qualifiers:4}};save();renderAll();}}
+function renderAll(){document.getElementById("qualifiers").value=String(state.settings.qualifiers||4);renderTeams();renderAdminMatches();renderPublicMatches();renderTables();makeLinks();}
+initClasses();
+const params=new URLSearchParams(location.search),mode=params.get("mode")||"signup";
+setMode(["signup","public","admin","coach"].includes(mode)?mode:"signup");
+</script>
+</body></html>
