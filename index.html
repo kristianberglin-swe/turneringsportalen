@@ -1320,15 +1320,92 @@ function updatePublishButton(){
 }
 
 function standings(gid){
-  const t=activeTournament(),ids=cache.groupTeams.filter(x=>x.group_id===gid).map(x=>x.team_id),s={};
-  ids.forEach(id=>s[id]={id,team:teamName(id),mp:0,w:0,d:0,l:0,for:0,against:0,diff:0,pts:0});
-  cache.matches.filter(m=>m.group_id===gid&&m.phase==="group").forEach(m=>{
-    if(m.home_score==null||m.away_score==null||!s[m.home_team_id]||!s[m.away_team_id])return;
-    const h=s[m.home_team_id],a=s[m.away_team_id],hs=+m.home_score,as=+m.away_score;h.mp++;a.mp++;h.for+=hs;h.against+=as;a.for+=as;a.against+=hs;
-    if(hs>as){h.w++;a.l++;h.pts+=Number(t.win_points??3)}else if(hs<as){a.w++;h.l++;a.pts+=Number(t.win_points??3)}else{h.d++;a.d++;h.pts+=Number(t.draw_points??1);a.pts+=Number(t.draw_points??1)}
+  const t=activeTournament();
+  const ids=cache.groupTeams.filter(x=>x.group_id===gid).map(x=>x.team_id);
+  const s={};
+
+  ids.forEach(id=>{
+    s[id]={id,team:teamName(id),mp:0,w:0,d:0,l:0,for:0,against:0,diff:0,pts:0};
   });
+
+  const playedMatches=cache.matches.filter(m=>m.group_id===gid&&m.phase==="group"&&m.home_score!=null&&m.away_score!=null);
+
+  playedMatches.forEach(m=>{
+    if(!s[m.home_team_id]||!s[m.away_team_id])return;
+    const h=s[m.home_team_id],a=s[m.away_team_id],hs=+m.home_score,as=+m.away_score;
+
+    h.mp++; a.mp++;
+    h.for+=hs; h.against+=as;
+    a.for+=as; a.against+=hs;
+
+    if(hs>as){
+      h.w++; a.l++;
+      h.pts+=Number(t?.win_points??3);
+      a.pts+=Number(t?.loss_points??0);
+    }else if(hs<as){
+      a.w++; h.l++;
+      a.pts+=Number(t?.win_points??3);
+      h.pts+=Number(t?.loss_points??0);
+    }else{
+      h.d++; a.d++;
+      h.pts+=Number(t?.draw_points??1);
+      a.pts+=Number(t?.draw_points??1);
+    }
+  });
+
   Object.values(s).forEach(x=>x.diff=x.for-x.against);
-  return Object.values(s).sort((a,b)=>b.pts-a.pts||b.diff-a.diff||b.for-a.for||a.team.localeCompare(b.team,"sv"));
+
+  function headToHeadCompare(a,b){
+    const matches=playedMatches.filter(m=>
+      (m.home_team_id===a.id&&m.away_team_id===b.id) ||
+      (m.home_team_id===b.id&&m.away_team_id===a.id)
+    );
+
+    if(!matches.length)return 0;
+
+    let aPts=0,bPts=0,aFor=0,bFor=0;
+
+    for(const m of matches){
+      let aScore,bScore;
+      if(m.home_team_id===a.id){
+        aScore=Number(m.home_score); bScore=Number(m.away_score);
+      }else{
+        aScore=Number(m.away_score); bScore=Number(m.home_score);
+      }
+
+      aFor+=aScore; bFor+=bScore;
+
+      if(aScore>bScore) aPts+=Number(t?.win_points??3);
+      else if(aScore<bScore) bPts+=Number(t?.win_points??3);
+      else{
+        aPts+=Number(t?.draw_points??1);
+        bPts+=Number(t?.draw_points??1);
+      }
+    }
+
+    if(aPts!==bPts) return bPts-aPts;
+
+    const aDiff=aFor-bFor;
+    const bDiff=bFor-aFor;
+    if(aDiff!==bDiff) return bDiff-aDiff;
+
+    if(aFor!==bFor) return bFor-aFor;
+
+    return 0;
+  }
+
+  return Object.values(s).sort((a,b)=>{
+    if(a.pts!==b.pts) return b.pts-a.pts;
+    if(a.diff!==b.diff) return b.diff-a.diff;
+    if(a.for!==b.for) return b.for-a.for;
+
+    const h2h=headToHeadCompare(a,b);
+    if(h2h!==0) return h2h;
+
+    // Om lagen fortfarande är helt lika blir ordningen alfabetisk
+    // tills admin avgör genom lottning/manuellt beslut.
+    return a.team.localeCompare(b.team,"sv");
+  });
 }
 function completedGroup(gid){
   const ms=cache.matches.filter(m=>m.group_id===gid&&m.phase==="group");
@@ -1337,7 +1414,7 @@ function completedGroup(gid){
 function tablesHTML(){
   const t=activeTournament();if(!cache.groups.length)return'<span class="small">Inga grupper.</span>';
   const per=Math.max(1,Math.floor(Number(t.qualifiers||4)/cache.groups.length));
-  return cache.groups.map(g=>`<h3>${esc(g.name)}</h3><div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>Spelade</th><th>Vinster</th><th>Oavgjorda</th><th>Förluster</th><th>Gjorda ${esc(t.score_type)}</th><th>Insläppta ${esc(t.score_type)}</th><th>Skillnad</th><th>Tabellpoäng</th><th>Status</th></tr></thead><tbody>${standings(g.id).map((r,i)=>`<tr><td>${i+1}</td><td><b>${$("public").classList.contains("hidden")?esc(r.team):publicTeamName(r.id)}</b></td><td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td><b>${r.pts}</b></td><td>${completedGroup(g.id)&&i<per?'<span class="badge qualify">Till slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div>`).join("");
+  return cache.groups.map(g=>`<h3>${esc(g.name)}</h3><div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>Spelade</th><th>Vinster</th><th>Oavgjorda</th><th>Förluster</th><th>Gjorda ${esc(t.score_type)}</th><th>Insläppta ${esc(t.score_type)}</th><th>Skillnad</th><th>Tabellpoäng</th><th>Status</th></tr></thead><tbody>${standings(g.id).map((r,i)=>`<tr><td>${i+1}</td><td><b>${$("public").classList.contains("hidden")?esc(r.team):publicTeamName(r.id)}</b></td><td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td><b>${r.pts}</b></td><td>${completedGroup(g.id)&&i<per?'<span class="badge qualify">Till slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div><div class="small" style="margin:7px 0 18px">Vid lika placering avgör: tabellpoäng → skillnad → flest gjorda → inbördes möte. Om lagen fortfarande är helt lika krävs lottning/manuellt beslut.</div>`).join("");
 }
 function renderTables(){$("adminTables").innerHTML=tablesHTML()}
 
