@@ -119,101 +119,82 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   <div id="adminArea">
     <div id="adminHome">
       <div class="card">
-        <h2>Importera klasslistor från PDF</h2>
-        <p class="small">Skapa först läsår och klass längre ned på sidan. Välj sedan klass och PDF-fil här.</p>
-        <div class="grid2">
-          <div>
-            <label>Välj klass</label>
-            <select id="pdfImportClassTop" onchange="syncPdfClassSelects(this.value)">
-              <option value="">Välj klass</option>
-            </select>
-          </div>
-          <div>
-            <label>PDF-fil</label>
-            <input id="pdfClassFileTop" type="file" accept="application/pdf" onchange="syncPdfFileInput(this)">
-          </div>
-        </div>
-        <div class="actions">
-          <button class="primary" onclick="readClassPdfTop()">Läs PDF och visa elevnamn</button>
-        </div>
-        <div id="pdfImportTopMsg" style="margin-top:10px"></div>
-        <hr>
-        <h3>Alternativ: klistra in elevnamn</h3>
-        <p class="small">Om PDF-filen är inskannad som bild kan du klistra in elevnamnen här, en elev per rad.</p>
-        <textarea id="manualStudentNames" rows="10" placeholder="Anna Andersson&#10;Erik Eriksson"></textarea>
-        <div class="actions">
-          <button class="secondary" onclick="saveManualStudents()">Spara namnen till vald klass</button>
-        </div>
-        <div id="manualImportMsg" style="margin-top:10px"></div>
-      </div>
-
-      <div class="card">
         <h2>Admin</h2>
-        <p class="small">Här skapar och administrerar du turneringar. Anmälan sker endast via turneringens anmälningslänk. Resultat skrivs in först när ett spelschema finns.</p>
-
-        <div class="grid2">
-          <div class="tournament-card">
-            <h3>1. Skapa ny turnering</h3>
-            <p class="small">Ange namn och information. Därefter skapas en unik anmälningslänk.</p>
-            <label>Turneringens namn</label>
-            <input id="newName" placeholder="Volleyboll 2026">
-            <label>Information om turneringen</label>
-            <textarea id="newInfo" rows="6" placeholder="Exempel: datum, plats, sista anmälningsdag, regler och annan information till eleverna."></textarea>
-            <div class="actions">
-              <button id="createTournamentBtn" class="primary" onclick="createTournament()">Skapa turnering och anmälningslänk</button>
-            </div>
-            <div id="createMsg" style="margin-top:10px"></div>
-          </div>
-
-          <div class="tournament-card">
-            <h3>2. Administrera tidigare turnering</h3>
-            <p class="small">Välj en tidigare skapad turnering för att se anmälningar, skapa grupper och spelschema, publicera och skriva in resultat.</p>
-            <label>Välj turnering</label>
-            <select id="adminTournamentSelect">
-              <option value="">Välj turnering</option>
-            </select>
-            <div class="actions">
-              <button class="secondary" onclick="openSelectedTournament()">Administrera turnering</button>
-            </div>
-          </div>
+        <p class="small">Välj vad du vill göra.</p>
+        <div class="grid3">
+          <button class="primary" style="padding:18px;font-size:16px" onclick="showHomePanel('create')">1. Skapa ny turnering</button>
+          <button class="secondary" style="padding:18px;font-size:16px" onclick="showHomePanel('manage')">2. Administrera turnering</button>
+          <button class="secondary" style="padding:18px;font-size:16px" onclick="showHomePanel('rosters')">3. Klasslistor</button>
         </div>
       </div>
 
-      <div class="card">
-        <h2>Mina turneringar</h2>
+      <div id="home-create" class="card hidden">
+        <h2>Skapa ny turnering</h2>
+        <p class="small">Ange endast namn och information. Därefter skapas turneringens anmälningslänk.</p>
+        <label>Turneringens namn</label>
+        <input id="newName" placeholder="Volleyboll 2026">
+        <label>Information om turneringen</label>
+        <textarea id="newInfo" rows="6" placeholder="Exempel: datum, plats, sista anmälningsdag och regler."></textarea>
+        <div class="actions">
+          <button id="createTournamentBtn" class="primary" onclick="createTournament()">Skapa turnering och anmälningslänk</button>
+          <button class="secondary" onclick="showHomePanel(null)">Stäng</button>
+        </div>
+        <div id="createMsg" style="margin-top:10px"></div>
+      </div>
+
+      <div id="home-manage" class="card hidden">
+        <h2>Administrera turnering</h2>
+        <label>Välj turnering</label>
+        <select id="adminTournamentSelect">
+          <option value="">Välj turnering</option>
+        </select>
+        <div class="actions">
+          <button class="primary" onclick="openSelectedTournament()">Öppna turnering</button>
+          <button class="secondary" onclick="showHomePanel(null)">Stäng</button>
+        </div>
+        <hr>
+        <h3>Tidigare skapade turneringar</h3>
         <div id="tournamentList"></div>
       </div>
 
-      <div class="card">
-        <h2>Klasslistor</h2>
-        <p class="small">Klasslistorna för 2026/2027 finns redan inlagda. Klicka på en klass för att ändra, lägga till eller ta bort elevnamn. Inför nästa läsår skapar du ett nytt läsår och nya klasser.</p>
+      <div id="home-rosters" class="card hidden">
+        <h2>Klasslistor 2026/2027</h2>
+        <div id="rosterSummary" class="success" style="margin-bottom:14px"></div>
+        <p class="small">Klicka på en klass för att se samtliga elever. Där kan du ändra namn, lägga till en ny elev eller ta bort en elev.</p>
+
         <div class="grid2">
           <div>
-            <label>Aktivt läsår</label>
+            <label>Läsår</label>
             <select id="schoolYearSelect" onchange="selectSchoolYear()"></select>
+          </div>
+          <div>
+            <label>Skapa nytt läsår inför nästa läsår</label>
+            <input id="newSchoolYearName" placeholder="2027/2028">
             <div class="actions">
+              <button class="secondary" onclick="createSchoolYear()">Skapa nytt läsår</button>
               <button class="secondary" onclick="setActiveSchoolYear()">Gör valt läsår aktivt</button>
             </div>
           </div>
-          <div>
-            <label>Skapa nytt läsår</label>
-            <input id="newSchoolYearName" placeholder="2027/2028">
-            <div class="actions">
-              <button class="primary" onclick="createSchoolYear()">Skapa läsår</button>
-            </div>
-          </div>
         </div>
+
         <hr>
         <div class="grid2">
           <div>
             <label>Ny klass</label>
             <input id="newClassName" placeholder="7A1">
-            <div class="actions"><button class="primary" onclick="createClass()">Lägg till klass</button></div>
+            <div class="actions"><button class="secondary" onclick="createClass()">Lägg till klass</button></div>
           </div>
-          <div class="small">Klicka på en klass nedan för att lägga till, ändra eller ta bort elever.</div>
+          <div>
+            <label>Kontrollera årets namn</label>
+            <div class="actions"><button class="primary" onclick="toggleAllRosterNames()">Visa alla elevnamn</button></div>
+          </div>
         </div>
-        <div id="classListAdmin" style="margin-top:14px"></div>
+
+        <div id="classListAdmin" style="margin-top:16px"></div>
+        <div id="allRosterNames" class="hidden" style="margin-top:16px"></div>
         <div id="classEditor" class="hidden" style="margin-top:16px"></div>
+
+        <div class="actions"><button class="secondary" onclick="showHomePanel(null)">Stäng</button></div>
       </div>
     </div>
 
@@ -437,12 +418,17 @@ async function loadClassAdmin(){
 
 function renderClassAdmin(){
   const el=$("classListAdmin");
-if(!el)return;
-  if(!classRecords.length){el.innerHTML='<div class="note">Inga klasser finns i detta läsår ännu.</div>';return}
+  if(!el)return;
+  if(!classRecords.length){
+    el.innerHTML='<div class="note">Inga klasser finns i detta läsår ännu.</div>';
+    updateRosterSummary();
+    return;
+  }
   el.innerHTML=`<div class="grid3">${classRecords.map(c=>{
     const count=classStudents.filter(s=>s.class_id===c.id).length;
-    return `<div class="team-card"><h3>${esc(c.name)}</h3><div class="small">${count} elever</div><div class="actions"><button class="primary" onclick="openClassEditor('${c.id}')">Redigera klass</button><button class="danger" onclick="deleteClass('${c.id}')">Radera klass</button></div></div>`;
+    return `<div class="team-card"><h3>${esc(c.name)}</h3><div class="small">${count} elever</div><div class="actions"><button class="primary" onclick="openClassEditor('${c.id}')">Visa / redigera elever</button><button class="secondary" onclick="renameClass('${c.id}','${esc(c.name).replaceAll("'","&#39;")}')">Byt klassnamn</button></div></div>`;
   }).join("")}</div>`;
+  updateRosterSummary();
 }
 
 async function selectSchoolYear(){
@@ -478,7 +464,30 @@ async function createClass(){
   const {error}=await db.from("school_classes").insert({school_year_id:selectedSchoolYearId,name});
   if(error){alert(error.message);return}
   $("newClassName").value="";
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin();
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary();
+}
+
+async function renameClass(id,oldName){
+  const c=classRecords.find(x=>x.id===id);
+  if(!c)return;
+
+  const newName=(prompt("Nytt klassnamn:",oldName)||"").trim().toUpperCase();
+  if(!newName || newName===oldName)return;
+
+  const {error}=await db.from("school_classes").update({name:newName}).eq("id",id);
+  if(error){
+    alert(error.message.includes("duplicate") ? "Det finns redan en klass med det namnet i detta läsår." : error.message);
+    return;
+  }
+
+  await loadRosterData(selectedSchoolYearId);
+  renderClassAdmin();
+  updateRosterSummary();
+
+  const editor=$("classEditor");
+  if(editor && !editor.classList.contains("hidden")){
+    openClassEditor(id);
+  }
 }
 
 async function deleteClass(id){
@@ -486,26 +495,34 @@ async function deleteClass(id){
   if(!c||!confirm(`Radera klassen ${c.name} och hela dess klasslista?`))return;
   const {error}=await db.from("school_classes").delete().eq("id",id);
   if(error){alert(error.message);return}
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); $("classEditor").classList.add("hidden");
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary(); $("classEditor").classList.add("hidden");
 }
 
 function openClassEditor(id){
   const c=classRecords.find(x=>x.id===id); if(!c)return;
   const students=classStudents.filter(s=>s.class_id===id).sort((a,b)=>a.student_name.localeCompare(b.student_name,"sv"));
   const el=$("classEditor"); el.classList.remove("hidden");
-  el.innerHTML=`<div class="card"><h3>${esc(c.name)}</h3>
-    <div class="grid2"><div><label>Lägg till elev</label><input id="newStudentName" placeholder="Förnamn Efternamn"><div class="actions"><button class="primary" onclick="addStudent('${id}')">Lägg till elev</button></div></div>
-    <div><label>Klistra in flera elever</label><textarea id="bulkStudents" rows="5" placeholder="En elev per rad"></textarea><div class="actions"><button class="secondary" onclick="addBulkStudents('${id}')">Lägg till listan</button></div></div></div>
+  el.innerHTML=`<div class="card"><h2>${esc(c.name)} – ${students.length} elever</h2>
+    <div class="grid2">
+      <div>
+        <label>Lägg till elev</label>
+        <input id="newStudentName" placeholder="Förnamn Efternamn">
+        <div class="actions"><button class="primary" onclick="addStudent('${id}')">Lägg till elev</button></div>
+      </div>
+      <div class="small">Klicka på Ändra bredvid ett namn för att rätta stavning eller namn. Klicka Ta bort om eleven har slutat.</div>
+    </div>
     <hr>
-    <div>${students.map(s=>`<div class="player" style="justify-content:space-between"><span>${esc(s.student_name)}</span><div class="actions" style="margin:0"><button class="secondary" onclick="renameStudent('${s.id}','${esc(s.student_name).replaceAll("'","&#39;")}')">Ändra</button><button class="danger" onclick="deleteStudent('${s.id}','${id}')">Ta bort</button></div></div>`).join("") || '<span class="small">Klassen har inga elever ännu.</span>'}</div>
+    <div>${students.map(s=>`<div class="player" style="justify-content:space-between"><span><b>${esc(s.student_name)}</b></span><div class="actions" style="margin:0"><button class="secondary" onclick="renameStudent('${s.id}','${esc(s.student_name).replaceAll("'","&#39;")}')">Ändra namn</button><button class="danger" onclick="deleteStudent('${s.id}','${id}')">Ta bort</button></div></div>`).join("") || '<span class="small">Klassen har inga elever ännu.</span>'}</div>
+    <div class="actions" style="margin-top:16px"><button class="secondary" onclick="renameClass('${id}','${esc(c.name).replaceAll("'","&#39;")}')">Byt klassnamn</button><button class="secondary" onclick="$('classEditor').classList.add('hidden')">Stäng</button><button class="danger" onclick="deleteClass('${id}')">Radera hela klassen</button></div>
   </div>`;
+  el.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 async function addStudent(classId){
   const name=$("newStudentName").value.trim(); if(!name)return;
   const {error}=await db.from("class_students").insert({class_id:classId,student_name:name});
   if(error){alert(error.message);return}
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary(); updateRosterSummary(); openClassEditor(classId);
 }
 
 async function addBulkStudents(classId){
@@ -513,14 +530,14 @@ async function addBulkStudents(classId){
   if(!names.length)return;
   const {error}=await db.from("class_students").insert(names.map(student_name=>({class_id:classId,student_name})));
   if(error){alert(error.message);return}
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary(); updateRosterSummary(); openClassEditor(classId);
 }
 
 async function renameStudent(id,oldName){
   const name=prompt("Nytt namn:",oldName); if(!name||name===oldName)return;
   const {error}=await db.from("class_students").update({student_name:name.trim()}).eq("id",id);
   if(error){alert(error.message);return}
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin();
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary();
   const s=classStudents.find(x=>x.id===id); if(s)openClassEditor(s.class_id);
 }
 
@@ -528,7 +545,7 @@ async function deleteStudent(id,classId){
   if(!confirm("Ta bort eleven från klasslistan?"))return;
   const {error}=await db.from("class_students").delete().eq("id",id);
   if(error){alert(error.message);return}
-  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); updateRosterSummary(); updateRosterSummary(); openClassEditor(classId);
 }
 
 
@@ -637,16 +654,61 @@ async function createTournament(){
   await loadAdminHome();
 }
 
+function showHomePanel(panel){
+  ["create","manage","rosters"].forEach(x=>{
+    const el=$("home-"+x);
+    if(el)el.classList.toggle("hidden",x!==panel);
+  });
+  if(panel==="rosters"){
+    updateRosterSummary();
+  }
+}
+
+function updateRosterSummary(){
+  const el=$("rosterSummary");
+  if(!el)return;
+  const year=schoolYears.find(y=>y.id===selectedSchoolYearId);
+  const total=classStudents.length;
+  el.innerHTML=`<b>${esc(year?.name||"Läsår")}</b>: ${classRecords.length} klasser och ${total} elever finns inlagda.`;
+}
+
+function toggleAllRosterNames(){
+  const el=$("allRosterNames");
+  if(!el)return;
+  if(!el.classList.contains("hidden")){
+    el.classList.add("hidden");
+    el.innerHTML="";
+    return;
+  }
+  if(!classRecords.length){
+    el.innerHTML='<div class="note">Inga klasslistor finns för valt läsår.</div>';
+    el.classList.remove("hidden");
+    return;
+  }
+  el.innerHTML=classRecords.map(c=>{
+    const students=classStudents.filter(s=>s.class_id===c.id).sort((a,b)=>a.student_name.localeCompare(b.student_name,"sv"));
+    return `<div class="team-card" style="margin-bottom:12px"><h3>${esc(c.name)} <span class="small">(${students.length} elever)</span></h3><div class="player-list">${students.map(s=>`<div class="player">${esc(s.student_name)}</div>`).join("") || '<span class="small">Inga elever.</span>'}</div></div>`;
+  }).join("");
+  el.classList.remove("hidden");
+}
+
 async function loadAdminHome(){
   await loadTournaments();
   await loadSchoolYears();
   await ensureBuiltInRoster2026();
+  await loadSchoolYears();
+  const y2026=schoolYears.find(y=>y.name==="2026/2027");
+  if(y2026) selectedSchoolYearId=y2026.id;
   await loadClassAdmin();
   renderTournamentList();
   const sel=$("adminTournamentSelect");
   if(sel){
     sel.innerHTML='<option value="">Välj turnering</option>'+cache.tournaments.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
   }
+  const sy=$("schoolYearSelect");
+  if(sy && selectedSchoolYearId) sy.value=selectedSchoolYearId;
+  updateRosterSummary();
+  showHomePanel(null);
 }
 function openSelectedTournament(){
   const sel=$("adminTournamentSelect");
