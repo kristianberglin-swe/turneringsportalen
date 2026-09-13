@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Turneringsportalen</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root {
   --bg:#f3f6f8; --card:#fff; --text:#172026; --muted:#667085; --line:#d9e0e5;
@@ -187,7 +186,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 
       <div class="card">
         <h2>Klasslistor</h2>
-        <p class="small">Här hanterar du läsår, klasser och elever. Det aktiva läsåret används automatiskt när nya turneringar skapas.</p>
+        <p class="small">Klasslistorna för 2026/2027 finns redan inlagda. Klicka på en klass för att ändra, lägga till eller ta bort elevnamn. Inför nästa läsår skapar du ett nytt läsår och nya klasser.</p>
         <div class="grid2">
           <div>
             <label>Aktivt läsår</label>
@@ -214,33 +213,6 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
           <div class="small">Klicka på en klass nedan för att lägga till, ändra eller ta bort elever.</div>
         </div>
         <div id="classListAdmin" style="margin-top:14px"></div>
-
-        <hr>
-        <h3>Importera klasslista från PDF</h3>
-        <p class="small">Välj först den klass som PDF-filen gäller. Texten läses ut och visas i en redigerbar lista innan du sparar.</p>
-        <div class="grid2">
-          <div>
-            <label>Klass</label>
-            <select id="pdfImportClass"><option value="">Välj klass</option></select>
-          </div>
-          <div>
-            <label>PDF-fil</label>
-            <input id="pdfClassFile" type="file" accept="application/pdf">
-          </div>
-        </div>
-        <div class="actions">
-          <button class="secondary" onclick="readClassPdf()">Läs PDF</button>
-        </div>
-        <div id="pdfImportArea" class="hidden" style="margin-top:14px">
-          <label>Elevnamn som hittades</label>
-          <textarea id="pdfStudentNames" rows="14" placeholder="En elev per rad"></textarea>
-          <div class="small">Kontrollera listan. Ta bort rubriker, sidnummer eller annan text som inte är elevnamn.</div>
-          <div class="actions">
-            <button class="primary" onclick="savePdfStudents()">Spara till klasslistan</button>
-          </div>
-          <div id="pdfImportMsg" style="margin-top:10px"></div>
-        </div>
-
         <div id="classEditor" class="hidden" style="margin-top:16px"></div>
       </div>
     </div>
@@ -380,6 +352,45 @@ function setMode(m){
   if(m==="coach")loadCoach();
 }
 
+
+async function ensureBuiltInRoster2026(){
+  // Create/find school year 2026/2027.
+  let year=schoolYears.find(y=>y.name==="2026/2027");
+  if(!year){
+    const {data,error}=await db.from("school_years").insert({name:"2026/2027",is_active:schoolYears.length===0}).select().single();
+    if(error){console.error("Kunde inte skapa läsår:",error);return}
+    year=data;
+    await loadSchoolYears();
+  }
+
+  const {data:existingClasses,error:e1}=await db.from("school_classes").select("*").eq("school_year_id",year.id);
+  if(e1){console.error(e1);return}
+
+  const existingByName=Object.fromEntries((existingClasses||[]).map(c=>[c.name,c]));
+
+  for(const [className,names] of Object.entries(ROSTERS)){
+    let cls=existingByName[className];
+    if(!cls){
+      const {data,error}=await db.from("school_classes").insert({school_year_id:year.id,name:className}).select().single();
+      if(error){console.error("Kunde inte skapa klass",className,error);continue}
+      cls=data;
+    }
+
+    const {data:existingStudents,error:e2}=await db.from("class_students").select("student_name").eq("class_id",cls.id);
+    if(e2){console.error(e2);continue}
+    const existing=new Set((existingStudents||[]).map(x=>x.student_name.toLocaleLowerCase("sv")));
+
+    const toInsert=names
+      .filter(n=>!existing.has(n.toLocaleLowerCase("sv")))
+      .map(student_name=>({class_id:cls.id,student_name}));
+
+    if(toInsert.length){
+      const {error}=await db.from("class_students").insert(toInsert);
+      if(error)console.error("Kunde inte lägga in elever i",className,error);
+    }
+  }
+}
+
 async function loadSchoolYears(){
   const {data,error}=await db.from("school_years").select("*").order("name",{ascending:false});
   if(error){console.error(error);return}
@@ -426,20 +437,7 @@ async function loadClassAdmin(){
 
 function renderClassAdmin(){
   const el=$("classListAdmin");
-  const pdfSel=$("pdfImportClass");
-  const pdfSelTop=$("pdfImportClassTop");
-  const opts='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
-  if(pdfSel){
-    const old=pdfSel.value;
-    pdfSel.innerHTML=opts;
-    if(classRecords.some(c=>c.id===old))pdfSel.value=old;
-  }
-  if(pdfSelTop){
-    const oldTop=pdfSelTop.value;
-    pdfSelTop.innerHTML=opts;
-    if(classRecords.some(c=>c.id===oldTop))pdfSelTop.value=oldTop;
-  }
-  if(!el)return;
+if(!el)return;
   if(!classRecords.length){el.innerHTML='<div class="note">Inga klasser finns i detta läsår ännu.</div>';return}
   el.innerHTML=`<div class="grid3">${classRecords.map(c=>{
     const count=classStudents.filter(s=>s.class_id===c.id).length;
@@ -534,189 +532,7 @@ async function deleteStudent(id,classId){
 }
 
 
-function syncPdfClassSelects(value){
-  const a=$("pdfImportClass");
-  const b=$("pdfImportClassTop");
-  if(a)a.value=value;
-  if(b)b.value=value;
-}
-
-function syncPdfFileInput(input){
-  // File inputs cannot be programmatically copied for security reasons.
-  // The top importer therefore reads directly from its own input.
-}
-
-async function saveManualStudents(){
-  const classId=$("pdfImportClassTop").value;
-  const msg=$("manualImportMsg");
-  if(!classId){msg.innerHTML='<div class="error">Välj klass först.</div>';return}
-  const names=$("manualStudentNames").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
-  if(!names.length){msg.innerHTML='<div class="error">Klistra in minst ett elevnamn.</div>';return}
-
-  const existing=new Set(classStudents.filter(s=>s.class_id===classId).map(s=>s.student_name.toLocaleLowerCase("sv")));
-  const unique=[];
-  for(const name of names){
-    const key=name.toLocaleLowerCase("sv");
-    if(!existing.has(key) && !unique.some(x=>x.toLocaleLowerCase("sv")===key)) unique.push(name);
-  }
-
-  if(!unique.length){msg.innerHTML='<div class="note">Alla namnen finns redan i klasslistan.</div>';return}
-  const {error}=await db.from("class_students").insert(unique.map(student_name=>({class_id:classId,student_name})));
-  if(error){msg.innerHTML=`<div class="error">${esc(error.message)}</div>`;return}
-
-  await loadRosterData(selectedSchoolYearId);
-  renderClassAdmin();
-  $("manualStudentNames").value="";
-  msg.innerHTML=`<div class="success">${unique.length} elever sparades.</div>`;
-}
-
-async function readClassPdfTop(){
-  const classId=$("pdfImportClassTop").value;
-  const file=$("pdfClassFileTop").files[0];
-  const msg=$("pdfImportTopMsg");
-
-  if(!classId){msg.innerHTML='<div class="error">Välj vilken klass PDF-filen gäller.</div>';return}
-  if(!file){msg.innerHTML='<div class="error">Välj en PDF-fil.</div>';return}
-  if(!window.pdfjsLib){msg.innerHTML='<div class="error">PDF-läsaren kunde inte laddas. Ladda om sidan.</div>';return}
-
-  try{
-    const bytes=new Uint8Array(await file.arrayBuffer());
-    const pdf=await pdfjsLib.getDocument({data:bytes,disableWorker:true}).promise;
-    let lines=[];
-
-    for(let p=1;p<=pdf.numPages;p++){
-      const page=await pdf.getPage(p);
-      const content=await page.getTextContent();
-      const rows={};
-
-      for(const item of content.items){
-        const y=Math.round(item.transform[5]/3)*3;
-        if(!rows[y])rows[y]=[];
-        rows[y].push({x:item.transform[4],text:item.str});
-      }
-
-      for(const y of Object.keys(rows).map(Number).sort((a,b)=>b-a)){
-        const line=rows[y].sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim();
-        if(line)lines.push(line);
-      }
-    }
-
-    if(!lines.length){
-      throw new Error("PDF-filen innehåller ingen läsbar text. Den verkar vara inskannad som bild. Använd den manuella inklistringen i stället.");
-    }
-
-    const cleaned=lines
-      .map(x=>x.trim())
-      .filter(Boolean)
-      .filter(x=>!/^sida\s*\d+/i.test(x))
-      .filter(x=>!/^page\s*\d+/i.test(x))
-      .filter(x=>!(/^\d+$/.test(x)))
-      .filter((x,i,a)=>a.indexOf(x)===i);
-
-    // Reuse lower import editor so user can edit before saving.
-    $("pdfImportClass").value=classId;
-    $("pdfStudentNames").value=cleaned.join("\\n");
-    $("pdfImportArea").classList.remove("hidden");
-    msg.innerHTML='<div class="success">PDF-filen är läst. Scrolla ned till Klasslistor för att kontrollera namnen och spara.</div>';
-    $("pdfImportArea").scrollIntoView({behavior:"smooth",block:"center"});
-  }catch(err){
-    console.error(err);
-    msg.innerHTML=`<div class="error">Kunde inte läsa PDF-filen: ${esc(err.message||String(err))}</div>`;
-  }
-}
-
-async function readClassPdf(){
-  const classId=$("pdfImportClass").value;
-  const file=$("pdfClassFile").files[0];
-  const msg=$("pdfImportMsg");
-  if(!classId){alert("Välj vilken klass PDF-filen gäller.");return}
-  if(!file){alert("Välj en PDF-fil.");return}
-  if(!window.pdfjsLib){
-    alert("PDF-läsaren kunde inte laddas. Ladda om sidan och försök igen.");
-    return;
-  }
-
-  try{
-    const bytes=new Uint8Array(await file.arrayBuffer());
-    const pdf=await pdfjsLib.getDocument({data:bytes,disableWorker:true}).promise;
-    let lines=[];
-
-    for(let p=1;p<=pdf.numPages;p++){
-      const page=await pdf.getPage(p);
-      const content=await page.getTextContent();
-      const rows={};
-
-      for(const item of content.items){
-        const y=Math.round(item.transform[5]/3)*3;
-        if(!rows[y])rows[y]=[];
-        rows[y].push({x:item.transform[4],text:item.str});
-      }
-
-      const ys=Object.keys(rows).map(Number).sort((a,b)=>b-a);
-      for(const y of ys){
-        const line=rows[y].sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim();
-        if(line)lines.push(line);
-      }
-    }
-
-    if(!lines.length){
-      throw new Error("PDF-filen innehåller ingen läsbar text. Den verkar vara inskannad som bild. Använd den manuella inklistringen i stället.");
-    }
-
-    const cleaned=lines
-      .map(x=>x.trim())
-      .filter(Boolean)
-      .filter(x=>!/^sida\s*\d+/i.test(x))
-      .filter(x=>!/^page\s*\d+/i.test(x))
-      .filter(x=>!(/^\d+$/.test(x)))
-      .filter((x,i,a)=>a.indexOf(x)===i);
-
-    $("pdfStudentNames").value=cleaned.join("\n");
-    $("pdfImportArea").classList.remove("hidden");
-    if(msg)msg.innerHTML='<div class="success">PDF-filen är läst. Kontrollera listan innan du sparar.</div>';
-  }catch(err){
-    console.error(err);
-    $("pdfImportArea").classList.remove("hidden");
-    if(msg)msg.innerHTML=`<div class="error">Kunde inte läsa PDF-filen: ${esc(err.message||String(err))}</div>`;
-  }
-}
-
-async function savePdfStudents(){
-  const classId=$("pdfImportClass").value;
-  const names=$("pdfStudentNames").value
-    .split(/\n/)
-    .map(x=>x.trim())
-    .filter(Boolean);
-
-  if(!classId){alert("Välj klass.");return}
-  if(!names.length){alert("Det finns inga namn att spara.");return}
-
-  const existing=new Set(
-    classStudents.filter(s=>s.class_id===classId).map(s=>s.student_name.toLocaleLowerCase("sv"))
-  );
-
-  const unique=[];
-  for(const name of names){
-    const key=name.toLocaleLowerCase("sv");
-    if(!existing.has(key) && !unique.some(x=>x.toLocaleLowerCase("sv")===key)) unique.push(name);
-  }
-
-  if(!unique.length){
-    $("pdfImportMsg").innerHTML='<div class="note">Alla namnen finns redan i klasslistan.</div>';
-    return;
-  }
-
-  const {error}=await db.from("class_students").insert(unique.map(student_name=>({class_id:classId,student_name})));
-  if(error){
-    $("pdfImportMsg").innerHTML=`<div class="error">${esc(error.message)}</div>`;
-    return;
-  }
-
-  await loadRosterData(selectedSchoolYearId);
-  renderClassAdmin();
-  $("pdfImportMsg").innerHTML=`<div class="success">${unique.length} elever lades till i klasslistan.</div>`;
-}
-async function loadTournaments(){
+async async async async async function loadTournaments(){
   const {data,error}=await db.from("tournaments").select("*").order("created_at",{ascending:false});
   if(error)throw error; cache.tournaments=data||[];
   for(const id of ["signupTournament","publicTournament"]){
@@ -823,6 +639,8 @@ async function createTournament(){
 
 async function loadAdminHome(){
   await loadTournaments();
+  await loadSchoolYears();
+  await ensureBuiltInRoster2026();
   await loadClassAdmin();
   renderTournamentList();
   const sel=$("adminTournamentSelect");
