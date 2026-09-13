@@ -160,6 +160,9 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
       <div id="home-rosters" class="card hidden">
         <h2>Klasslistor 2026/2027</h2>
         <div id="rosterSummary" class="success" style="margin-bottom:14px"></div>
+        <div class="actions" style="margin-bottom:12px">
+          <button class="secondary" onclick="loadClassAdmin()">Uppdatera från databasen</button>
+        </div>
         <p class="small">Klicka på en klass för att se samtliga elever. Där kan du ändra namn, lägga till en ny elev eller ta bort en elev.</p>
 
         <div class="grid2">
@@ -334,88 +337,113 @@ function setMode(m){
 }
 
 
-async function ensureBuiltInRoster2026(){
-  // Create/find school year 2026/2027.
-  let year=schoolYears.find(y=>y.name==="2026/2027");
-  if(!year){
-    const {data,error}=await db.from("school_years").insert({name:"2026/2027",is_active:schoolYears.length===0}).select().single();
-    if(error){console.error("Kunde inte skapa läsår:",error);return}
-    year=data;
-    await loadSchoolYears();
-  }
 
-  const {data:existingClasses,error:e1}=await db.from("school_classes").select("*").eq("school_year_id",year.id);
-  if(e1){console.error(e1);return}
-
-  const existingByName=Object.fromEntries((existingClasses||[]).map(c=>[c.name,c]));
-
-  for(const [className,names] of Object.entries(ROSTERS)){
-    let cls=existingByName[className];
-    if(!cls){
-      const {data,error}=await db.from("school_classes").insert({school_year_id:year.id,name:className}).select().single();
-      if(error){console.error("Kunde inte skapa klass",className,error);continue}
-      cls=data;
-    }
-
-    const {data:existingStudents,error:e2}=await db.from("class_students").select("student_name").eq("class_id",cls.id);
-    if(e2){console.error(e2);continue}
-    const existing=new Set((existingStudents||[]).map(x=>x.student_name.toLocaleLowerCase("sv")));
-
-    const toInsert=names
-      .filter(n=>!existing.has(n.toLocaleLowerCase("sv")))
-      .map(student_name=>({class_id:cls.id,student_name}));
-
-    if(toInsert.length){
-      const {error}=await db.from("class_students").insert(toInsert);
-      if(error)console.error("Kunde inte lägga in elever i",className,error);
-    }
-  }
-}
 
 async function loadSchoolYears(){
-  const {data,error}=await db.from("school_years").select("*").order("name",{ascending:false});
-  if(error){console.error(error);return}
-  schoolYears=data||[];
-  if(!selectedSchoolYearId){
-    selectedSchoolYearId=(schoolYears.find(y=>y.is_active)||schoolYears[0])?.id||null;
+  const {data,error}=await db
+    .from("school_years")
+    .select("*")
+    .order("name",{ascending:false});
+
+  if(error){
+    console.error("Kunde inte läsa läsår:",error);
+    const summary=$("rosterSummary");
+    if(summary) summary.innerHTML=`<div class="error">Kunde inte läsa läsår: ${esc(error.message)}</div>`;
+    return false;
   }
+
+  schoolYears=data||[];
+
+  const active=schoolYears.find(y=>y.is_active) || schoolYears.find(y=>y.name==="2026/2027") || schoolYears[0] || null;
+
+  // If current selection no longer exists, switch to active/first year.
+  if(!selectedSchoolYearId || !schoolYears.some(y=>y.id===selectedSchoolYearId)){
+    selectedSchoolYearId=active?.id||null;
+  }
+
   const sel=$("schoolYearSelect");
   if(sel){
-    sel.innerHTML=schoolYears.map(y=>`<option value="${y.id}" ${y.id===selectedSchoolYearId?"selected":""}>${esc(y.name)}${y.is_active?" (aktivt)":""}</option>`).join("");
+    sel.innerHTML=schoolYears.length
+      ? schoolYears.map(y=>`<option value="${y.id}">${esc(y.name)}${y.is_active?" (aktivt)":""}</option>`).join("")
+      : '<option value="">Inga läsår</option>';
+    if(selectedSchoolYearId) sel.value=selectedSchoolYearId;
   }
+
+  return true;
 }
 
 async function loadRosterData(schoolYearId=null){
-  if(!schoolYears.length) await loadSchoolYears();
-  const yearId=schoolYearId || selectedSchoolYearId || (schoolYears.find(y=>y.is_active)||schoolYears[0])?.id;
-  if(!yearId){classRecords=[];classStudents=[];renderClassSelect();return}
-  const {data:classes,error:e1}=await db.from("school_classes").select("*").eq("school_year_id",yearId).order("name");
-  if(e1){console.error(e1);return}
+  const yearId=schoolYearId || selectedSchoolYearId;
+  classRecords=[];
+  classStudents=[];
+
+  if(!yearId){
+    renderClassSelect();
+    return false;
+  }
+
+  const {data:classes,error:e1}=await db
+    .from("school_classes")
+    .select("*")
+    .eq("school_year_id",yearId)
+    .order("name");
+
+  if(e1){
+    console.error("Kunde inte läsa klasser:",e1);
+    const summary=$("rosterSummary");
+    if(summary) summary.innerHTML=`<div class="error">Kunde inte läsa klasser: ${esc(e1.message)}</div>`;
+    return false;
+  }
+
   classRecords=classes||[];
-  const ids=classRecords.map(c=>c.id);
-  if(ids.length){
-    const {data:students,error:e2}=await db.from("class_students").select("*").in("class_id",ids).order("student_name");
-    if(e2){console.error(e2);return}
+
+  if(classRecords.length){
+    const ids=classRecords.map(c=>c.id);
+    const {data:students,error:e2}=await db
+      .from("class_students")
+      .select("*")
+      .in("class_id",ids)
+      .order("student_name");
+
+    if(e2){
+      console.error("Kunde inte läsa elever:",e2);
+      const summary=$("rosterSummary");
+      if(summary) summary.innerHTML=`<div class="error">Kunde inte läsa elever: ${esc(e2.message)}</div>`;
+      return false;
+    }
+
     classStudents=students||[];
-  }else classStudents=[];
+  }
+
   renderClassSelect();
+  return true;
 }
 
 function renderClassSelect(){
   const sel=$("classSelect");
-  if(sel){
-    const old=sel.value;
-    sel.innerHTML='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
-    if(classRecords.some(c=>c.name===old))sel.value=old;
-  }
+  if(!sel)return;
+  const old=sel.value;
+  sel.innerHTML='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+  if(classRecords.some(c=>c.name===old)) sel.value=old;
 }
 
 async function loadClassAdmin(){
-  await loadSchoolYears();
+  const yearsOk=await loadSchoolYears();
+  if(!yearsOk){
+    renderClassAdmin();
+    return;
+  }
+
+  const y2026=schoolYears.find(y=>y.name==="2026/2027");
+  if(y2026 && !selectedSchoolYearId) selectedSchoolYearId=y2026.id;
+
+  const sel=$("schoolYearSelect");
+  if(sel && selectedSchoolYearId) sel.value=selectedSchoolYearId;
+
   await loadRosterData(selectedSchoolYearId);
   renderClassAdmin();
+  updateRosterSummary();
 }
-
 function renderClassAdmin(){
   const el=$("classListAdmin");
   if(!el)return;
@@ -432,12 +460,14 @@ function renderClassAdmin(){
 }
 
 async function selectSchoolYear(){
-  selectedSchoolYearId=$("schoolYearSelect").value;
+  selectedSchoolYearId=$("schoolYearSelect").value || null;
   await loadRosterData(selectedSchoolYearId);
   renderClassAdmin();
+  updateRosterSummary();
   $("classEditor").classList.add("hidden");
+  const all=$("allRosterNames");
+  if(all){all.classList.add("hidden");all.innerHTML="";}
 }
-
 async function setActiveSchoolYear(){
   if(!selectedSchoolYearId)return;
   await db.from("school_years").update({is_active:false}).neq("id",selectedSchoolYearId);
@@ -654,24 +684,29 @@ async function createTournament(){
   await loadAdminHome();
 }
 
-function showHomePanel(panel){
+async function showHomePanel(panel){
   ["create","manage","rosters"].forEach(x=>{
     const el=$("home-"+x);
     if(el)el.classList.toggle("hidden",x!==panel);
   });
+
   if(panel==="rosters"){
-    updateRosterSummary();
+    await loadClassAdmin();
   }
 }
 
 function updateRosterSummary(){
   const el=$("rosterSummary");
   if(!el)return;
-  const year=schoolYears.find(y=>y.id===selectedSchoolYearId);
-  const total=classStudents.length;
-  el.innerHTML=`<b>${esc(year?.name||"Läsår")}</b>: ${classRecords.length} klasser och ${total} elever finns inlagda.`;
-}
 
+  const year=schoolYears.find(y=>y.id===selectedSchoolYearId);
+  if(!year){
+    el.innerHTML='<b>Inget läsår valt.</b>';
+    return;
+  }
+
+  el.innerHTML=`<b>${esc(year.name)}</b>: ${classRecords.length} klasser och ${classStudents.length} elever finns inlagda.`;
+}
 function toggleAllRosterNames(){
   const el=$("allRosterNames");
   if(!el)return;
@@ -693,22 +728,35 @@ function toggleAllRosterNames(){
 }
 
 async function loadAdminHome(){
-  await loadTournaments();
-  await loadSchoolYears();
-  await ensureBuiltInRoster2026();
-  await loadSchoolYears();
-  const y2026=schoolYears.find(y=>y.name==="2026/2027");
-  if(y2026) selectedSchoolYearId=y2026.id;
-  await loadClassAdmin();
-  renderTournamentList();
-  const sel=$("adminTournamentSelect");
-  if(sel){
-    sel.innerHTML='<option value="">Välj turnering</option>'+cache.tournaments.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  try{
+    await loadTournaments();
+
+    const ok=await loadSchoolYears();
+    if(ok){
+      const y2026=schoolYears.find(y=>y.name==="2026/2027");
+      if(y2026) selectedSchoolYearId=y2026.id;
+
+      const sy=$("schoolYearSelect");
+      if(sy && selectedSchoolYearId) sy.value=selectedSchoolYearId;
+
+      await loadRosterData(selectedSchoolYearId);
+      renderClassAdmin();
+      updateRosterSummary();
+    }
+
+    renderTournamentList();
+
+    const sel=$("adminTournamentSelect");
+    if(sel){
+      sel.innerHTML='<option value="">Välj turnering</option>'+cache.tournaments.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+    }
+
+    showHomePanel(null);
+  }catch(err){
+    console.error(err);
+    const summary=$("rosterSummary");
+    if(summary) summary.innerHTML=`<div class="error">Ett fel uppstod: ${esc(err.message||String(err))}</div>`;
   }
-  const sy=$("schoolYearSelect");
-  if(sy && selectedSchoolYearId) sy.value=selectedSchoolYearId;
-  updateRosterSummary();
-  showHomePanel(null);
 }
 function openSelectedTournament(){
   const sel=$("adminTournamentSelect");
