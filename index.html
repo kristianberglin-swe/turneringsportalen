@@ -138,6 +138,14 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
           <button class="primary" onclick="readClassPdfTop()">Läs PDF och visa elevnamn</button>
         </div>
         <div id="pdfImportTopMsg" style="margin-top:10px"></div>
+        <hr>
+        <h3>Alternativ: klistra in elevnamn</h3>
+        <p class="small">Om PDF-filen är inskannad som bild kan du klistra in elevnamnen här, en elev per rad.</p>
+        <textarea id="manualStudentNames" rows="10" placeholder="Anna Andersson&#10;Erik Eriksson"></textarea>
+        <div class="actions">
+          <button class="secondary" onclick="saveManualStudents()">Spara namnen till vald klass</button>
+        </div>
+        <div id="manualImportMsg" style="margin-top:10px"></div>
       </div>
 
       <div class="card">
@@ -538,6 +546,30 @@ function syncPdfFileInput(input){
   // The top importer therefore reads directly from its own input.
 }
 
+async function saveManualStudents(){
+  const classId=$("pdfImportClassTop").value;
+  const msg=$("manualImportMsg");
+  if(!classId){msg.innerHTML='<div class="error">Välj klass först.</div>';return}
+  const names=$("manualStudentNames").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  if(!names.length){msg.innerHTML='<div class="error">Klistra in minst ett elevnamn.</div>';return}
+
+  const existing=new Set(classStudents.filter(s=>s.class_id===classId).map(s=>s.student_name.toLocaleLowerCase("sv")));
+  const unique=[];
+  for(const name of names){
+    const key=name.toLocaleLowerCase("sv");
+    if(!existing.has(key) && !unique.some(x=>x.toLocaleLowerCase("sv")===key)) unique.push(name);
+  }
+
+  if(!unique.length){msg.innerHTML='<div class="note">Alla namnen finns redan i klasslistan.</div>';return}
+  const {error}=await db.from("class_students").insert(unique.map(student_name=>({class_id:classId,student_name})));
+  if(error){msg.innerHTML=`<div class="error">${esc(error.message)}</div>`;return}
+
+  await loadRosterData(selectedSchoolYearId);
+  renderClassAdmin();
+  $("manualStudentNames").value="";
+  msg.innerHTML=`<div class="success">${unique.length} elever sparades.</div>`;
+}
+
 async function readClassPdfTop(){
   const classId=$("pdfImportClassTop").value;
   const file=$("pdfClassFileTop").files[0];
@@ -548,9 +580,8 @@ async function readClassPdfTop(){
   if(!window.pdfjsLib){msg.innerHTML='<div class="error">PDF-läsaren kunde inte laddas. Ladda om sidan.</div>';return}
 
   try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     const bytes=new Uint8Array(await file.arrayBuffer());
-    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    const pdf=await pdfjsLib.getDocument({data:bytes,disableWorker:true}).promise;
     let lines=[];
 
     for(let p=1;p<=pdf.numPages;p++){
@@ -568,6 +599,10 @@ async function readClassPdfTop(){
         const line=rows[y].sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim();
         if(line)lines.push(line);
       }
+    }
+
+    if(!lines.length){
+      throw new Error("PDF-filen innehåller ingen läsbar text. Den verkar vara inskannad som bild. Använd den manuella inklistringen i stället.");
     }
 
     const cleaned=lines
@@ -602,9 +637,8 @@ async function readClassPdf(){
   }
 
   try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     const bytes=new Uint8Array(await file.arrayBuffer());
-    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    const pdf=await pdfjsLib.getDocument({data:bytes,disableWorker:true}).promise;
     let lines=[];
 
     for(let p=1;p<=pdf.numPages;p++){
@@ -623,6 +657,10 @@ async function readClassPdf(){
         const line=rows[y].sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim();
         if(line)lines.push(line);
       }
+    }
+
+    if(!lines.length){
+      throw new Error("PDF-filen innehåller ingen läsbar text. Den verkar vara inskannad som bild. Använd den manuella inklistringen i stället.");
     }
 
     const cleaned=lines
