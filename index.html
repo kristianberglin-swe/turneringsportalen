@@ -20,7 +20,7 @@ header .wrap{padding:0 18px}
 h1{margin:0;font-size:34px} h2{margin-top:0} h3{margin:0 0 10px}
 header p{margin:7px 0 0;opacity:.92}
 .modebar,.actions,.steps{display:flex;gap:8px;flex-wrap:wrap}
-.modebar{margin:18px 0}
+.modebar{display:none!important;margin:18px 0}
 button{border:0;border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
 .modebtn,.secondary{background:#e7ecef;color:#24313a}
 .modebtn.active,.primary{background:var(--green);color:#fff}
@@ -119,6 +119,27 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <section id="admin" class="hidden">
   <div id="adminArea">
     <div id="adminHome">
+      <div class="card">
+        <h2>Importera klasslistor från PDF</h2>
+        <p class="small">Skapa först läsår och klass längre ned på sidan. Välj sedan klass och PDF-fil här.</p>
+        <div class="grid2">
+          <div>
+            <label>Välj klass</label>
+            <select id="pdfImportClassTop" onchange="syncPdfClassSelects(this.value)">
+              <option value="">Välj klass</option>
+            </select>
+          </div>
+          <div>
+            <label>PDF-fil</label>
+            <input id="pdfClassFileTop" type="file" accept="application/pdf" onchange="syncPdfFileInput(this)">
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" onclick="readClassPdfTop()">Läs PDF och visa elevnamn</button>
+        </div>
+        <div id="pdfImportTopMsg" style="margin-top:10px"></div>
+      </div>
+
       <div class="card">
         <h2>Admin</h2>
         <p class="small">Här skapar och administrerar du turneringar. Anmälan sker endast via turneringens anmälningslänk. Resultat skrivs in först när ett spelschema finns.</p>
@@ -398,10 +419,17 @@ async function loadClassAdmin(){
 function renderClassAdmin(){
   const el=$("classListAdmin");
   const pdfSel=$("pdfImportClass");
+  const pdfSelTop=$("pdfImportClassTop");
+  const opts='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
   if(pdfSel){
     const old=pdfSel.value;
-    pdfSel.innerHTML='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    pdfSel.innerHTML=opts;
     if(classRecords.some(c=>c.id===old))pdfSel.value=old;
+  }
+  if(pdfSelTop){
+    const oldTop=pdfSelTop.value;
+    pdfSelTop.innerHTML=opts;
+    if(classRecords.some(c=>c.id===oldTop))pdfSelTop.value=oldTop;
   }
   if(!el)return;
   if(!classRecords.length){el.innerHTML='<div class="note">Inga klasser finns i detta läsår ännu.</div>';return}
@@ -497,6 +525,70 @@ async function deleteStudent(id,classId){
   await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
 }
 
+
+function syncPdfClassSelects(value){
+  const a=$("pdfImportClass");
+  const b=$("pdfImportClassTop");
+  if(a)a.value=value;
+  if(b)b.value=value;
+}
+
+function syncPdfFileInput(input){
+  // File inputs cannot be programmatically copied for security reasons.
+  // The top importer therefore reads directly from its own input.
+}
+
+async function readClassPdfTop(){
+  const classId=$("pdfImportClassTop").value;
+  const file=$("pdfClassFileTop").files[0];
+  const msg=$("pdfImportTopMsg");
+
+  if(!classId){msg.innerHTML='<div class="error">Välj vilken klass PDF-filen gäller.</div>';return}
+  if(!file){msg.innerHTML='<div class="error">Välj en PDF-fil.</div>';return}
+  if(!window.pdfjsLib){msg.innerHTML='<div class="error">PDF-läsaren kunde inte laddas. Ladda om sidan.</div>';return}
+
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    let lines=[];
+
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const content=await page.getTextContent();
+      const rows={};
+
+      for(const item of content.items){
+        const y=Math.round(item.transform[5]/3)*3;
+        if(!rows[y])rows[y]=[];
+        rows[y].push({x:item.transform[4],text:item.str});
+      }
+
+      for(const y of Object.keys(rows).map(Number).sort((a,b)=>b-a)){
+        const line=rows[y].sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim();
+        if(line)lines.push(line);
+      }
+    }
+
+    const cleaned=lines
+      .map(x=>x.trim())
+      .filter(Boolean)
+      .filter(x=>!/^sida\s*\d+/i.test(x))
+      .filter(x=>!/^page\s*\d+/i.test(x))
+      .filter(x=>!(/^\d+$/.test(x)))
+      .filter((x,i,a)=>a.indexOf(x)===i);
+
+    // Reuse lower import editor so user can edit before saving.
+    $("pdfImportClass").value=classId;
+    $("pdfStudentNames").value=cleaned.join("\\n");
+    $("pdfImportArea").classList.remove("hidden");
+    msg.innerHTML='<div class="success">PDF-filen är läst. Scrolla ned till Klasslistor för att kontrollera namnen och spara.</div>';
+    $("pdfImportArea").scrollIntoView({behavior:"smooth",block:"center"});
+  }catch(err){
+    console.error(err);
+    msg.innerHTML=`<div class="error">Kunde inte läsa PDF-filen: ${esc(err.message||String(err))}</div>`;
+  }
+}
 
 async function readClassPdf(){
   const classId=$("pdfImportClass").value;
@@ -598,23 +690,34 @@ async function loadTournaments(){
 
 async function prepareSignup(){
   await loadTournaments();
-  const tid=new URLSearchParams(location.search).get("t");
-  if(tid&&cache.tournaments.some(t=>t.id===tid)){
-    $("signupTournament").value=tid;
-    $("signupTournamentPicker").classList.add("hidden");
-  } else {
-    $("signupTournamentPicker").classList.remove("hidden");
-  }
-  const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
-  await loadRosterData(t?.school_year_id || null);
-  refreshSignupTitle();
-}
-async function signupTournamentChanged(){
-  const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
-  await loadRosterData(t?.school_year_id || null);
-  refreshSignupTitle();
-}
+  const params=new URLSearchParams(location.search);
+  const tid=params.get("t");
 
+  // Anmälan får endast öppnas via en riktig turneringslänk.
+  if(!tid){
+    const u=new URL(location.href);
+    u.searchParams.set("mode","admin");
+    u.searchParams.delete("t");
+    history.replaceState({},'',u);
+    setMode("admin");
+    return;
+  }
+
+  const t=cache.tournaments.find(x=>x.id===tid);
+  if(!t){
+    const u=new URL(location.href);
+    u.searchParams.set("mode","admin");
+    u.searchParams.delete("t");
+    history.replaceState({},'',u);
+    setMode("admin");
+    return;
+  }
+
+  $("signupTournament").value=tid;
+  $("signupTournamentPicker").classList.add("hidden");
+  await loadRosterData(t.school_year_id || null);
+  refreshSignupTitle();
+}
 function refreshSignupTitle(){
   const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
   $("signupTitle").textContent=t?`${t.name} – anmäl lag`:"Anmäl lag";
@@ -998,9 +1101,19 @@ async function loadPublic(){
 }
 
 async function boot(){
-  
   await loadTournaments();
-  const m=new URLSearchParams(location.search).get("mode")||"admin";setMode(["signup","public","admin","coach"].includes(m)?m:"signup");
+  const params=new URLSearchParams(location.search);
+  let m=params.get("mode")||"admin";
+
+  if(m==="signup" && !params.get("t")){
+    m="admin";
+    const u=new URL(location.href);
+    u.searchParams.set("mode","admin");
+    u.searchParams.delete("t");
+    history.replaceState({},'',u);
+  }
+
+  setMode(["signup","public","admin","coach"].includes(m)?m:"admin");
 }
 boot();
 </script>
