@@ -182,6 +182,76 @@ hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 
 footer{color:#71827b}
 
+
+.highlight-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin-top:16px;
+}
+.highlight-card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  background:linear-gradient(180deg,#ffffff,#f7fbf9);
+  box-shadow:0 8px 20px rgba(18,65,50,.05);
+  min-height:150px;
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+.highlight-icon{
+  width:54px;
+  height:54px;
+  min-width:54px;
+  border-radius:15px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(180deg,#17805d,#0d6549);
+  color:#fff;
+  box-shadow:0 7px 16px rgba(13,107,75,.18);
+}
+.highlight-icon svg{
+  width:28px;
+  height:28px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.highlight-content h3{
+  margin:1px 0 5px;
+  font-size:16px;
+  color:#1c4034;
+}
+.highlight-team{
+  font-size:21px;
+  font-weight:900;
+  color:var(--green2);
+  line-height:1.15;
+  margin-bottom:5px;
+}
+.highlight-value{
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.4;
+}
+.highlight-footer{
+  margin-top:14px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#eef7f3;
+  color:#34584c;
+  font-size:12px;
+}
+@media(max-width:950px){
+  .highlight-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:620px){
+  .highlight-grid{grid-template-columns:1fr}
+}
+
 @media(max-width:950px){
   header{min-height:210px;background-position:center top}
   .grid2,.grid3,.grid4,.bracket{grid-template-columns:1fr}
@@ -238,7 +308,13 @@ footer{color:#71827b}
   <div id="publicContent">
     <div class="card"><h2>Spelschema och resultat</h2><div id="publicMatches"></div></div>
     <div class="card"><h2>Tabeller</h2><div id="publicTables"></div></div>
-    <div class="card"><h2>Slutspel</h2><div id="publicBracket"></div></div><div id="publicTeamPlayers" class="card hidden"></div>
+    <div class="card"><h2>Slutspel</h2><div id="publicBracket"></div></div>
+    <div id="publicHighlightsCard" class="card hidden">
+      <h2>Highlights</h2>
+      <p class="small">Turneringens utmärkelser och statistik.</p>
+      <div id="publicHighlights"></div>
+    </div>
+    <div id="publicTeamPlayers" class="card hidden"></div>
   </div>
 </section>
 
@@ -1563,6 +1639,174 @@ function renderBracket(){$("adminBracket").innerHTML=bracketHTML(true)}
 async function reloadEditorData(){await loadTournaments();await loadTournamentData();renderEditor()}
 function renderPublicIfOpen(){if(!$("public").classList.contains("hidden"))loadPublic()}
 
+
+function tournamentIsFinished(){
+  const played=cache.matches.filter(m=>m.phase==="group"||m.phase==="knockout");
+  if(!played.length)return false;
+
+  const groupMatches=played.filter(m=>m.phase==="group");
+  if(!groupMatches.length || !groupMatches.every(m=>m.home_score!=null&&m.away_score!=null))return false;
+
+  const knockout=played.filter(m=>m.phase==="knockout");
+  if(knockout.length){
+    if(!knockout.every(m=>m.home_score!=null&&m.away_score!=null))return false;
+    const final=knockout.find(m=>m.round_name==="Final");
+    if(final && (final.home_score==null||final.away_score==null))return false;
+  }
+
+  // If the tournament is configured for a knockout, require a completed final.
+  const t=activeTournament();
+  if(Number(t?.qualifiers||0)>=2){
+    const final=knockout.find(m=>m.round_name==="Final");
+    if(!final || final.home_score==null || final.away_score==null)return false;
+  }
+
+  return true;
+}
+
+function highlightIcon(type){
+  const icons={
+    attack:`<svg viewBox="0 0 24 24"><path d="M12 3l3 6 6 .8-4.5 4.4 1.1 6.3L12 17.5 6.4 20.5l1.1-6.3L3 9.8 9 9z"/></svg>`,
+    defense:`<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.8-3 8.3-7 10-4-1.7-7-5.2-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>`,
+    close:`<svg viewBox="0 0 24 24"><path d="M7 7h4v4H7zM13 13h4v4h-4z"/><path d="M11 9h2M9 11v2M13 15h-2M15 13v-2"/></svg>`,
+    wins:`<svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 01-8 0z"/><path d="M8 6H4v1a4 4 0 004 4M16 6h4v1a4 4 0 01-4 4M12 12v5M9 21h6M10 17h4"/></svg>`,
+    margin:`<svg viewBox="0 0 24 24"><path d="M4 17l5-5 4 4 7-9"/><path d="M15 7h5v5"/></svg>`,
+    thriller:`<svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="5"/></svg>`
+  };
+  return icons[type]||icons.attack;
+}
+
+function buildHighlights(){
+  const t=activeTournament();
+  const matches=cache.matches.filter(m=>
+    (m.phase==="group"||m.phase==="knockout") &&
+    m.home_score!=null && m.away_score!=null
+  );
+
+  const stats={};
+  const ensure=id=>{
+    if(!stats[id])stats[id]={
+      id,
+      team:teamName(id),
+      played:0,wins:0,for:0,against:0,diff:0,
+      closeGames:0,totalMargin:0
+    };
+    return stats[id];
+  };
+
+  let biggestWin=null;
+  let closestMatch=null;
+
+  const closeThreshold=(t?.score_type==="mål")?1:3;
+
+  for(const m of matches){
+    const h=ensure(m.home_team_id),a=ensure(m.away_team_id);
+    const hs=Number(m.home_score),as=Number(m.away_score);
+    const margin=Math.abs(hs-as);
+
+    h.played++;a.played++;
+    h.for+=hs;h.against+=as;
+    a.for+=as;a.against+=hs;
+    h.totalMargin+=margin;a.totalMargin+=margin;
+
+    if(hs>as)h.wins++;
+    else if(as>hs)a.wins++;
+
+    if(margin<=closeThreshold){
+      h.closeGames++;
+      a.closeGames++;
+    }
+
+    if(!biggestWin || margin>biggestWin.margin){
+      biggestWin={match:m,margin,home:teamName(m.home_team_id),away:teamName(m.away_team_id),hs,as};
+    }
+
+    if(margin>0 && (!closestMatch || margin<closestMatch.margin)){
+      closestMatch={match:m,margin,home:teamName(m.home_team_id),away:teamName(m.away_team_id),hs,as};
+    }
+  }
+
+  const arr=Object.values(stats);
+  arr.forEach(s=>s.diff=s.for-s.against);
+
+  const best=(sortFn)=>[...arr].sort(sortFn)[0];
+
+  const topScorer=best((a,b)=>b.for-a.for || b.diff-a.diff || a.team.localeCompare(b.team,"sv"));
+  const bestDefense=best((a,b)=>a.against-b.against || b.diff-a.diff || a.team.localeCompare(b.team,"sv"));
+  const closeTeam=best((a,b)=>b.closeGames-a.closeGames || (a.totalMargin/a.played)-(b.totalMargin/b.played) || a.team.localeCompare(b.team,"sv"));
+  const mostWins=best((a,b)=>b.wins-a.wins || b.diff-a.diff || a.team.localeCompare(b.team,"sv"));
+  const bestDiff=best((a,b)=>b.diff-a.diff || b.for-a.for || a.team.localeCompare(b.team,"sv"));
+
+  const unit=(t?.score_type==="mål")?"mål":"poäng";
+
+  const cards=[
+    {
+      icon:"attack",
+      title:`Flest gjorda ${unit}`,
+      team:topScorer?.team||"–",
+      value:topScorer?`${topScorer.for} gjorda ${unit}`:"–"
+    },
+    {
+      icon:"defense",
+      title:`Bäst försvar`,
+      team:bestDefense?.team||"–",
+      value:bestDefense?`Bara ${bestDefense.against} insläppta ${unit}`:"–"
+    },
+    {
+      icon:"close",
+      title:"Flest jämna matcher",
+      team:closeTeam?.team||"–",
+      value:closeTeam?`${closeTeam.closeGames} matcher avgjordes med högst ${closeThreshold} ${unit}`:"–"
+    },
+    {
+      icon:"wins",
+      title:"Flest segrar",
+      team:mostWins?.team||"–",
+      value:mostWins?`${mostWins.wins} vinster under turneringen`:"–"
+    },
+    {
+      icon:"margin",
+      title:"Bästa skillnad",
+      team:bestDiff?.team||"–",
+      value:bestDiff?`${bestDiff.diff>0?"+":""}${bestDiff.diff} i ${unit}skillnad`:"–"
+    },
+    {
+      icon:"thriller",
+      title:"Jämnaste matchen",
+      team:closestMatch?`${closestMatch.home} – ${closestMatch.away}`:"–",
+      value:closestMatch?`${closestMatch.hs}–${closestMatch.as} • skillnad ${closestMatch.margin}`:"–"
+    }
+  ];
+
+  return `<div class="highlight-grid">${cards.map(c=>`
+    <div class="highlight-card">
+      <div class="highlight-icon">${highlightIcon(c.icon)}</div>
+      <div class="highlight-content">
+        <h3>${esc(c.title)}</h3>
+        <div class="highlight-team">${esc(c.team)}</div>
+        <div class="highlight-value">${esc(c.value)}</div>
+      </div>
+    </div>
+  `).join("")}</div>
+  <div class="highlight-footer">
+    Highlights räknas från samtliga färdigspelade matcher i gruppspel och slutspel.
+  </div>`;
+}
+
+function renderPublicHighlights(){
+  const card=$("publicHighlightsCard");
+  const el=$("publicHighlights");
+  if(!card||!el)return;
+
+  if(!tournamentIsFinished()){
+    card.classList.add("hidden");
+    el.innerHTML="";
+    return;
+  }
+
+  el.innerHTML=buildHighlights();
+  card.classList.remove("hidden");
+}
 async function loadPublic(){
   const pbox=$("publicTeamPlayers"); if(pbox){pbox.classList.add("hidden");pbox.innerHTML="";}
   await loadTournaments();
@@ -1574,8 +1818,8 @@ async function loadPublic(){
   cache.teams=(a.data||[]).map(x=>({id:x.id,class_name:x.class_name}));cache.groups=b.data||[];cache.matches=c.data||[];cache.groupTeams=(d.data||[]).filter(gt=>cache.groups.some(g=>g.id===gt.group_id));
   $("publicStatus").innerHTML=`<div class="kpi"><span class="small">Anmälda lag</span><b>${cache.teams.length}</b></div><div class="kpi"><span class="small">Grupper</span><b>${cache.groups.length}</b></div><div class="kpi"><span class="small">Matcher</span><b>${cache.matches.filter(m=>m.phase==="group").length}</b></div><div class="kpi"><span class="small">Status</span><b style="font-size:16px">${t.published?"Publicerad":"Ej publicerad"}</b></div>`;
   $("notPublished").classList.toggle("hidden",!!t.published);$("publicContent").classList.toggle("hidden",!t.published);
-  if(!t.published)return;
-  $("publicMatches").innerHTML=scheduleTable(false,false);$("publicTables").innerHTML=tablesHTML();$("publicBracket").innerHTML=bracketHTML(false);
+  if(!t.published){const hc=$("publicHighlightsCard");if(hc)hc.classList.add("hidden");return;}
+  $("publicMatches").innerHTML=scheduleTable(false,false);$("publicTables").innerHTML=tablesHTML();$("publicBracket").innerHTML=bracketHTML(false);renderPublicHighlights();
 }
 
 async function boot(){
