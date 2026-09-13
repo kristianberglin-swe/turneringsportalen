@@ -246,6 +246,16 @@ footer{color:#71827b}
   <div id="adminArea">
     <div id="adminHome">
       <div class="card">
+        <h2>Testa hela turneringsflödet</h2>
+        <p class="small">Skapa en komplett testturnering med lag, grupper, spelschema och resultat. Använd den för att kontrollera tabeller, slutspel och publikläge.</p>
+        <div class="actions">
+          <button class="primary" onclick="createTestTournament()">Skapa testturnering</button>
+          <button class="danger" onclick="deleteTestTournaments()">Radera testturneringar</button>
+        </div>
+        <div id="testTournamentMsg" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
         <h2>Admin</h2>
         <p class="small">Välj vad du vill göra.</p>
         <div class="grid3">
@@ -854,6 +864,201 @@ function toggleAllRosterNames(){
     return `<div class="team-card" style="margin-bottom:12px"><h3>${esc(c.name)} <span class="small">(${students.length} elever)</span></h3><div class="player-list">${students.map(s=>`<div class="player">${esc(s.student_name)}</div>`).join("") || '<span class="small">Inga elever.</span>'}</div></div>`;
   }).join("");
   el.classList.remove("hidden");
+}
+
+
+async function createTestTournament(){
+  const msg=$("testTournamentMsg");
+  msg.innerHTML='<div class="note">Skapar testturnering…</div>';
+
+  try{
+    // 1. Create tournament
+    const activeYear=schoolYears.find(y=>y.is_active) || schoolYears.find(y=>y.name==="2026/2027") || schoolYears[0] || null;
+    const testName="TESTCUP 2026";
+
+    // Remove old test tournament with same name first
+    const old=cache.tournaments.find(t=>t.name===testName);
+    if(old){
+      await db.from("tournaments").delete().eq("id",old.id);
+    }
+
+    const {data:tournament,error:tErr}=await db.from("tournaments").insert({
+      name:testName,
+      information:"Automatiskt skapad testturnering för att kontrollera anmälan, grupper, spelschema, tabeller, resultat och slutspel.",
+      school_year_id:activeYear?.id||null,
+      score_type:"poäng",
+      qualifiers:4,
+      win_points:3,
+      draw_points:1,
+      loss_points:0,
+      published:true,
+      tournament_date:"2026-12-18",
+      start_time:"09:00",
+      match_minutes:10,
+      break_minutes:2,
+      courts:2
+    }).select().single();
+
+    if(tErr) throw tErr;
+
+    // 2. Pick eight real class names from the current roster
+    await loadRosterData(activeYear?.id||null);
+    const preferred=["8E1","8E2","8E3","8E4","8E5","9C1","9C2","9C3"];
+    let classNames=preferred.filter(n=>classRecords.some(c=>c.name===n));
+    if(classNames.length<8){
+      classNames=classRecords.slice(0,8).map(c=>c.name);
+    }
+    if(classNames.length<4){
+      throw new Error("Det finns för få klasslistor för att skapa en testturnering.");
+    }
+
+    const teamRows=[];
+    for(const className of classNames){
+      teamRows.push({
+        tournament_id:tournament.id,
+        class_name:className,
+        coach_name:"Testcoach",
+        coach_email:"test@friberga.se",
+        edit_token:crypto.randomUUID()+crypto.randomUUID()
+      });
+    }
+
+    const {data:teams,error:teamErr}=await db.from("teams").insert(teamRows).select();
+    if(teamErr) throw teamErr;
+
+    // 3. Add a few players from each actual class roster
+    const playerRows=[];
+    for(const team of teams){
+      const cls=classRecords.find(c=>c.name===team.class_name);
+      const names=cls
+        ? classStudents.filter(s=>s.class_id===cls.id).map(s=>s.student_name).slice(0,6)
+        : [];
+      for(const name of names){
+        playerRows.push({team_id:team.id,player_name:name});
+      }
+    }
+    if(playerRows.length){
+      const {error:pErr}=await db.from("players").insert(playerRows);
+      if(pErr) throw pErr;
+    }
+
+    // 4. Two groups
+    const {data:groups,error:gErr}=await db.from("tournament_groups").insert([
+      {tournament_id:tournament.id,name:"Grupp A"},
+      {tournament_id:tournament.id,name:"Grupp B"}
+    ]).select();
+    if(gErr) throw gErr;
+
+    const gA=groups.find(g=>g.name==="Grupp A");
+    const gB=groups.find(g=>g.name==="Grupp B");
+
+    const groupTeamRows=[];
+    teams.forEach((team,i)=>{
+      groupTeamRows.push({
+        group_id:i < Math.ceil(teams.length/2) ? gA.id : gB.id,
+        team_id:team.id
+      });
+    });
+    const {error:gtErr}=await db.from("group_teams").insert(groupTeamRows);
+    if(gtErr) throw gtErr;
+
+    // 5. Round robin matches with deterministic sample results
+    const groupAteams=teams.slice(0,Math.ceil(teams.length/2));
+    const groupBteams=teams.slice(Math.ceil(teams.length/2));
+    const matchRows=[];
+    const scorePatterns=[[21,15],[18,21],[21,19],[16,21],[21,12],[19,21],[21,17],[14,21],[21,20],[17,21],[21,13],[18,21]];
+    let scoreIndex=0;
+    let slotIndex=0;
+
+    function addGroupMatches(group,arr){
+      for(let i=0;i<arr.length;i++){
+        for(let j=i+1;j<arr.length;j++){
+          const pair=scorePatterns[scoreIndex % scorePatterns.length];
+          scoreIndex++;
+
+          const d=new Date("2026-12-18T09:00:00");
+          d.setMinutes(d.getMinutes()+slotIndex*12);
+          matchRows.push({
+            tournament_id:tournament.id,
+            group_id:group.id,
+            phase:"group",
+            round_name:group.name,
+            match_time:d.toISOString(),
+            court:"Plan "+((slotIndex%2)+1),
+            home_team_id:arr[i].id,
+            away_team_id:arr[j].id,
+            home_score:pair[0],
+            away_score:pair[1]
+          });
+          slotIndex++;
+        }
+      }
+    }
+
+    addGroupMatches(gA,groupAteams);
+    addGroupMatches(gB,groupBteams);
+
+    const {error:mErr}=await db.from("matches").insert(matchRows);
+    if(mErr) throw mErr;
+
+    // 6. Load into admin and create the automatic knockout matches
+    await loadTournaments();
+    await openTournament(tournament.id);
+    await syncKnockout();
+    await loadTournamentData();
+
+    // Give semifinal sample results if semifinals exist
+    const semis=cache.matches.filter(m=>m.phase==="knockout" && m.round_name?.startsWith("Semifinal"));
+    const semiScores=[[21,17],[18,21]];
+    for(let i=0;i<semis.length;i++){
+      await db.from("matches").update({
+        home_score:semiScores[i%2][0],
+        away_score:semiScores[i%2][1]
+      }).eq("id",semis[i].id);
+    }
+
+    await loadTournamentData();
+    await syncKnockout();
+    await loadTournamentData();
+
+    // Give the final a sample result too
+    const final=cache.matches.find(m=>m.phase==="knockout" && m.round_name==="Final");
+    if(final){
+      await db.from("matches").update({home_score:21,away_score:16}).eq("id",final.id);
+    }
+
+    await loadTournamentData();
+    renderEditor();
+
+    msg.innerHTML=`<div class="success"><b>Testturneringen är skapad.</b><br>
+      ${teams.length} lag, ${groups.length} grupper och ${matchRows.length} gruppmatcher har skapats med resultat.<br><br>
+      Öppna <b>Resultat</b> i turneringen för att kontrollera tabeller och slutspel.</div>`;
+  }catch(err){
+    console.error(err);
+    msg.innerHTML=`<div class="error"><b>Kunde inte skapa testturneringen.</b><br>${esc(err.message||String(err))}</div>`;
+  }
+}
+
+async function deleteTestTournaments(){
+  if(!confirm("Radera alla turneringar vars namn börjar med TEST?")) return;
+  const msg=$("testTournamentMsg");
+
+  try{
+    const {data,error}=await db.from("tournaments").select("id,name");
+    if(error) throw error;
+    const tests=(data||[]).filter(t=>/^TEST/i.test(t.name||""));
+
+    for(const t of tests){
+      const {error:dErr}=await db.from("tournaments").delete().eq("id",t.id);
+      if(dErr) throw dErr;
+    }
+
+    await loadAdminHome();
+    msg.innerHTML=`<div class="success">${tests.length} testturnering(ar) raderades.</div>`;
+  }catch(err){
+    console.error(err);
+    msg.innerHTML=`<div class="error">${esc(err.message||String(err))}</div>`;
+  }
 }
 
 async function loadAdminHome(){
