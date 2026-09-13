@@ -434,6 +434,7 @@ const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const ROSTERS={"7A1": ["Ariamard Philip", "Bernett John", "Ehde Alicia", "Elfström Julia", "Elman Harald", "Engström Lilly", "Georén Felix", "Gonzalez Smidhammar Matheo", "Hosayn Hêvi", "Immonen Leo", "Palfors Isabella", "Ponomareva Ekaterina", "Regamey Sebastian", "Richt Angelina", "Rosengren Elvira", "Sahlbäck Emma", "Sjövall Nicolina", "Smith Cheffil", "Stehlin Elsa", "Tauson Elias", "Victor Philip", "Vongjan Kanyanut", "Wallmark Mårtensson Thea", "Wesslau Erik", "Winge Emilia", "Wållgren Ted", "Xu Angel", "Ågren Anton"], "7A2": ["Bogdan-Popa Elisabet", "Cakste Filip", "Delgado Perez Simon Efrain", "Fosselius Tilda", "Georges Noa", "Gumbel Iris", "Hedin Beatrix", "Hell Thea", "Holmberg Oscar", "Jonson Eriksson Victor", "Julander Olivia", "Kroon Douglas", "Lindfors Tom", "Malmén Irma", "Mathiesen Hjalmar", "Mellbratt Skye", "Müntzing Louise Charlotta", "Nordlund Elsa", "Redin Vilhelm", "Rissler William", "Salih Sewa", "Seifert Lars", "Sherlund Bredin Lucy", "Ström Aston", "Tengwall Maximilian", "Thuresson Hedvig", "Viola Salvatore Vincent Nils", "Wallmander Hampus", "Wänström Alfred"], "7A3": ["Berhe Matthias Tedros", "Björknesjö Kasper", "Blomquist Isabelle", "Carping Julia", "Christensen Noah", "Eisen Aimée", "Ekblom Hallberg Jonas", "Fylking Victor", "Hani Mahdi", "Haraldsson Mathilda", "Janelid Nelson Filippa", "Karlsson Jack", "Lidman Cato", "Magnergård Hollmén Theo", "Moritz Ludwig", "Nordlund Ella", "Persson Isolde", "Plymoth Arthur", "Poehler Lily", "Prays Asplund Ida", "Ramteen Hugo", "Razavi Arman", "Sandhaag John", "Siösteen Frank", "Spens Alicia", "Stenborg Lundberg Eva", "Viktorsson Frans", "Ågerup Monié Jack", "Önnesjö Wilfred"], "7A4": ["Berg Juni", "Bohlin Vilhelm", "Drozdz Lilou", "Farag Noor", "Haglund Olsson Alva", "Johansson Daniel", "Karpsen Viktor", "Kjellberg Gustav", "Koskull CarlJohan", "Landell Alexandra", "Lindeborg Otto", "Littmarck Beatrix", "Löf Hjalmar", "Murray Wennberg Franca", "Nakauchi Lövqvist Cornelia", "Neufeld Theodor", "Niregård Elvin", "Olofsson Bianca", "Parchami Charlie", "Rosenberg Wilhelm", "Sabanovic Danijal", "Schullström Petter", "Strömblad Tove", "Tegnér Elle", "Trehag Nicole", "Waltré Fred", "Westin Silfverswärd Kalle", "Weström Bror"], "7A5": ["Ahmed Nubaid", "Ahrner Siri", "Angervall Aili", "Asghary Agnes", "Bergsten Julia", "Bergwitz-Larsen Linn", "Biba Noelio", "Bjärenstam Martinsson Jakob", "Chevalley Axel", "Forslund Jonsberg Ellen", "Fritz Filip", "Hallberg Henning", "Hosayn Rêbaz", "Johansson Lovisa", "Jäderstad Kåre", "Kupferschmidt Alma", "Levkovych Sviatoslav", "Lindén Eric", "Morberg Freja", "Nilsson Theodor", "Norrby Lou", "Oldén Hagelin Gustav", "Philipson Ted", "Rahimi Iman", "Sandmark Lovén Ludvig", "Svennberg Ivar", "Säfström Elias", "Wahlman Ella"], "8E1": ["Aarenstrup Alva", "Björklund Alexander", "Bodin Alexander", "Bohlin Tuva", "Ehnbom Edvin", "Ekman Jakob", "Forberg Siri", "Fritz Sofia", "Jusic Angelina", "Kernot Wilmer", "Leandersson Lou", "Lindahl Gustav", "Lindén Sophie", "Löf Schiött Edvin", "Marin Mia", "Martin Lily", "Meyer Jenna", "Nettelbladt Bill", "Nilsson Millanao Leoni", "Patocka Paul", "Patocka Vincent", "Pozo Chowaniec Aleksander", "Rafinia Arvin", "Rydholm Emily", "Sjödin Klara", "Williamsson Doris", "Wilton Simon"], "8E2": ["Ahmed Madzhit Bekir", "Björk Vincent", "Brost Carl", "Chahimi Östmark Cornelia", "Dahlin Nova", "Dai Andi", "Fallenius Alexandra", "Forsmark Wahlberg David", "Hallonstén Moa", "Hedborg Folke", "Högemark Emilia", "Janmark Stella", "Johansson Valentina", "Kilincaslan Kevin", "Kirshakov-Vestersten Otto", "Lantz Sophie", "Lindblom Alexander", "Lindblom William", "Lundgren Linn", "Löfgren Edith", "Moberg Corinne", "Niregård Rasmus", "Rifall Fred", "Sundbom Wång Sofia", "Wirta Vincent", "Ösmark Doris"], "8E3": ["Bernsten William", "Billborn Vilma", "Blomberg Stig", "Bröms Ly Gustav", "Carlberg Charlie", "Evestedt Almkvist Tove", "Göthlin Gustav", "Johansen Skarne Haldor", "Liljefors Greta", "Lilliestråle Lykke", "Lind Elise", "Liontos Leonidas", "Moussavi Nia Roksana", "Oscarius Sally", "Rössner Linnea", "Seflin Adrian", "Sjöholm Fred", "Skoog Tulle", "Sohrner Ida", "Struik Eveline", "Sundberg Liam", "Svavar Jakob", "Tränk Axel", "Weithz Mathilde", "Wigrup Lindgren Lowa"], "8E4": ["Aberra Jonathan", "Adamsson Josephine", "Bakali Hraiki Naser", "Brage Edith", "Carlsson Rasiwala Philip", "De Basso Ankido", "Edman Amanda", "Ellwén Astrid", "Forsberg Sigrid", "Frydrych Maya Magdalena", "Hermansson Hedda", "Hermansson Henry", "Karlsson Elsa", "Köpniwsky Lily", "Lantz Oscar", "Letsjö Edvin", "Palm Levis", "Persson Ruben", "Rosenlund Amanda", "Teterukovskiy Michael", "Tränk Erik", "Wallenrodhe Exadaktilou Alexia", "Wibergh Sasha", "Winberg Philip", "Wirgin Adam"], "8E5": ["Aspegren Hailie", "Blanksvärd Lovisa", "Bärnheim Ella", "Dahlstedt Zoe", "Ekstedt John", "Fahlgren Philip", "Fahrman Nils", "Flygare Albin", "Gemzell Philip", "Günther Josefine", "Hornberger Sam", "Hosk August", "Isaksson Ellen", "Jönsson Nysten Walter", "Linglöf Molly", "Mannerberg Axel", "Nordahl Vilmer", "Oldenburg Lea", "Shanazarizadeh Hellgren Felicia", "Sjölund Lily", "Spong Elliot", "Ström Evesäter Märta", "Tonat Rosa Milou", "von Bahr Ellie", "Waltré August", "Wigzell Svante", "Östman Leonie"], "9C1": ["Berg Elvira", "Bergsten Gustav", "Bjärenstam Martinsson August", "Brännström Lisa", "Böhlmark Ida", "Dahlberg Lovisa", "Elenius Engström Sixten", "Elman Arvid", "Finnman Lukas", "Fossum Iva", "Gabous-Bard Lucas", "Johansson Oskar", "Kashani Noah", "Lindfors Alice", "Manoukian William", "Pergefors Tilda", "Pålshammar Eriksson Oscar", "Redig Othilia", "Rigi Amineh", "Sevéus Wilmer", "Sperle Elin", "Stenlund Aron", "Stigerud Elsa", "Svensson Österling Oliver", "Taaha Zaid", "Tiger Edvard", "Wennberg Ivar", "Wimnell Carl"], "9C2": ["Ahlqvist Agnes", "Bergendal Oliver", "Bergsten Lukas", "Bhatt Högström Noa", "Brevik Nora", "Ekblom Hallberg Hugo", "Elfving Isabelle", "Helgesson Carl", "Karlsson Livia", "Lagergren Elias", "Lanner Reutenauer Olivia", "Liljengren Wrethling Ella", "Lindblad Hugo", "Lundh Milo", "Nordenhök Karolina", "Norling Jonnerberg Alicia", "Rahimi Arman", "Ranheimer Lucas", "Rouse Oscar William", "Savås Lindstedt Alicia", "Schumacher Qwerin Dag", "Sjöholm Da Silva Liam", "Sköld Axel", "Svantegård Lovisa", "Tsud Mykyta", "Wahlberg Axel", "Westerberg Liban", "Widaeus Elmehagen Jacob"], "9C3": ["Amedsson Leo", "Assefa Niyat", "Benson Ella", "Brodin Stella", "Cappelen-Smith Amelie", "Carles Atle", "D'Hondt Alexander", "Egan Ethan Gabriel", "Falconer Otto", "Falk Carl", "Fjell Laban", "Grant Max", "Kondratenko Hlib", "Landgren Gry", "Magnusson Emma", "Odhage Lyberg Astrid", "Panichewskaja Harriett", "Roness Strömberg Love", "Rödin Antonia", "Rörling Vilma", "Salim Yadd", "Schotte Bosse", "Skyhag Stella", "Valseth Espen", "Westergren Neo", "Xu Gavin"], "9D1": ["Advocaat Hasselrot Elias", "Barchan Valentin", "Beermann Lucas", "Bengts Jackie", "Björnstjerna Evelina", "Garmer Klefbom Viktor", "Hellström Olivia", "Hällström Lisa", "Johansson Hugo", "Lindevall Franka Matilda", "Lundberg Vera", "Mohamed Rundblom Kamil", "Morakinyo Eliza", "Pourmand Mehrad", "Ramnelius Otto", "Råsten Karl", "Scherp Jacob", "Seflin Amanda", "Sjöberg Astrid", "Sköldenberg Henry", "Stehlin Sixten", "Svaton Tua", "Sävenstrand Liv", "von Freymann Filippa", "Westgren Måns", "Zachrisson Felix", "Öström Arvid"], "9D2": ["Ahlberg Emma", "Atterwall August", "Bergwitz-Larsen Frank", "Botha Hedén Axel", "Böhlmark Robertson Karl", "Carlberg Sophie", "Dzelzkalejs Kristaps", "Eskilsson Frank Einar", "Falk Marcus", "George Selma", "Holmqvist Aksel", "Hummel Natali Savrutsky Gomes Gabriela", "Ingesson Pennström Iris", "Jobarteh Gerdén Kwanza", "Lagerström Siiri", "Lind Johannes", "Lind Sofie", "Lindstedt Vidar", "Martin Emilia", "Moberg-Søemod Alexander", "Norinder Ida", "Nylund Douglas", "Ovrén Caspar", "Palmqvist Edgren Majken", "Sperle Nils", "Stojanovic Marlon", "Vassiliou Iliana"], "9D3": ["af Robson Agnes", "Aryee Noel", "Bergdahl Lindkvist Elvira", "Bjelkelöv Brunn Liam", "Björnsdotter Björkwall Telma", "Blomberg Caspar", "Boman Valter", "Ekelund Linnéa", "Frid Asta", "Fürstenbach Gustaf", "Giese Viktoria", "Holmberg Tyra", "Hummel Natali Savrutsky Gomes Ricardo", "Immonen Juhani", "Lindberg Perner Felix", "Löndqvist Leo", "Moritz Julia", "Nakauchi Lövqvist Elsa", "Nour Cortoni Hedvig", "Rahem Dastan", "Santikos Vera", "Shihabi Farah", "Söderberg Frida", "Tjåland Salhoff Linn", "Victor Edvin", "Åstmark Jonathan"]};
 
 let adminTournamentId=null;
+let publicTournamentData=null;
 let cache={tournaments:[],teams:[],groups:[],groupTeams:[],matches:[]};
 let schoolYears=[];
 let classRecords=[];
@@ -1004,7 +1005,6 @@ async function createTestTournament(){
     // 6. Load into admin and create the automatic knockout matches
     await loadTournaments();
     await openTournament(tournament.id);
-    await syncKnockout();
     await loadTournamentData();
 
     // Give semifinal sample results if semifinals exist
@@ -1113,9 +1113,11 @@ async function openTournament(id){
   $("editDate").value=t.tournament_date||"";$("editStartTime").value=(t.start_time||"09:00").slice(0,5);
   $("editMatchMinutes").value=t.match_minutes||10;$("editBreakMinutes").value=t.break_minutes??2;$("editCourts").value=String(t.courts||2);
   $("signupLinkPreview").value=signupUrl(id);$("publicLinkPreview").value=publicUrl(id);
+  await syncKnockout();
   renderEditor();showAdminSection(currentAdminSection);
 }
 function currentTournament(){return cache.tournaments.find(t=>t.id===adminTournamentId)}
+function activeTournament(){return currentTournament() || publicTournamentData || null}
 async function loadTournamentData(){
   const [a,b,c,d]=await Promise.all([
     db.from("teams").select("id,tournament_id,class_name,coach_name,coach_email,edit_token").eq("tournament_id",adminTournamentId).order("class_name"),
@@ -1176,7 +1178,7 @@ function renderEditor(){
   if(canEditResults()){
     renderResultMatches();
     renderTables();
-    syncKnockout().then(renderBracket);
+    renderBracket();
   } else {
     $("adminResultMatches").innerHTML='<div class="note">Resultat kan fyllas i först när det finns anmälda lag, grupper och ett skapat spelschema.</div>';
     $("adminTables").innerHTML="";
@@ -1318,7 +1320,7 @@ function updatePublishButton(){
 }
 
 function standings(gid){
-  const t=currentTournament(),ids=cache.groupTeams.filter(x=>x.group_id===gid).map(x=>x.team_id),s={};
+  const t=activeTournament(),ids=cache.groupTeams.filter(x=>x.group_id===gid).map(x=>x.team_id),s={};
   ids.forEach(id=>s[id]={id,team:teamName(id),mp:0,w:0,d:0,l:0,for:0,against:0,diff:0,pts:0});
   cache.matches.filter(m=>m.group_id===gid&&m.phase==="group").forEach(m=>{
     if(m.home_score==null||m.away_score==null||!s[m.home_team_id]||!s[m.away_team_id])return;
@@ -1333,49 +1335,148 @@ function completedGroup(gid){
   return ms.length>0&&ms.every(m=>m.home_score!=null&&m.away_score!=null);
 }
 function tablesHTML(){
-  const t=currentTournament();if(!cache.groups.length)return'<span class="small">Inga grupper.</span>';
+  const t=activeTournament();if(!cache.groups.length)return'<span class="small">Inga grupper.</span>';
   const per=Math.max(1,Math.floor(Number(t.qualifiers||4)/cache.groups.length));
   return cache.groups.map(g=>`<h3>${esc(g.name)}</h3><div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>Spelade</th><th>Vinster</th><th>Oavgjorda</th><th>Förluster</th><th>Gjorda ${esc(t.score_type)}</th><th>Insläppta ${esc(t.score_type)}</th><th>Skillnad</th><th>Tabellpoäng</th><th>Status</th></tr></thead><tbody>${standings(g.id).map((r,i)=>`<tr><td>${i+1}</td><td><b>${$("public").classList.contains("hidden")?esc(r.team):publicTeamName(r.id)}</b></td><td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td><b>${r.pts}</b></td><td>${completedGroup(g.id)&&i<per?'<span class="badge qualify">Till slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div>`).join("");
 }
 function renderTables(){$("adminTables").innerHTML=tablesHTML()}
 
 function qualifiedTeams(){
-  const t=currentTournament(),per=Math.max(1,Math.floor(Number(t.qualifiers||4)/Math.max(1,cache.groups.length))),q=[];
+  const t=activeTournament(),per=Math.max(1,Math.floor(Number(t.qualifiers||4)/Math.max(1,cache.groups.length))),q=[];
   for(const g of cache.groups){if(!completedGroup(g.id))continue;standings(g.id).slice(0,per).forEach((x,i)=>q.push({teamId:x.id,groupId:g.id,rank:i+1,groupName:g.name}))}
   return q.slice(0,Number(t.qualifiers||4));
 }
 async function syncKnockout(){
-  const t=currentTournament();if(!t)return;
-  const q=qualifiedTeams(),existing=cache.matches.filter(m=>m.phase==="knockout");
-  if(q.length<2)return;
-  let desired=[];
-  if(q.length===2) desired=[{round_name:"Final",home:q[0].teamId,away:q[1].teamId}];
-  else if(q.length>=4){
-    // For two groups: A1-B2 and B1-A2. Otherwise fall back to first-vs-last seeding.
-    if(cache.groups.length===2&&q.length>=4){
-      const g1=q.filter(x=>x.groupId===cache.groups[0].id),g2=q.filter(x=>x.groupId===cache.groups[1].id);
-      desired=[{round_name:"Semifinal 1",home:g1[0]?.teamId,away:g2[1]?.teamId},{round_name:"Semifinal 2",home:g2[0]?.teamId,away:g1[1]?.teamId}];
-    } else desired=[{round_name:"Semifinal 1",home:q[0]?.teamId,away:q[q.length-1]?.teamId},{round_name:"Semifinal 2",home:q[1]?.teamId,away:q[q.length-2]?.teamId}];
+  const t=activeTournament();
+  if(!t || !adminTournamentId)return;
+
+  // Hämta senaste matcher först.
+  await loadTournamentData();
+
+  // Rensa eventuella gamla dubletter per slutspelsrunda.
+  const knockoutNow=cache.matches.filter(m=>m.phase==="knockout");
+  const grouped={};
+  for(const m of knockoutNow){
+    const key=m.round_name||"";
+    if(!grouped[key])grouped[key]=[];
+    grouped[key].push(m);
   }
-  for(const d of desired){
-    if(!d.home||!d.away)continue;
-    const ex=existing.find(x=>x.round_name===d.round_name);
-    if(!ex)await db.from("matches").insert({tournament_id:t.id,phase:"knockout",round_name:d.round_name,home_team_id:d.home,away_team_id:d.away});
-    else if(ex.home_team_id!==d.home||ex.away_team_id!==d.away)await db.from("matches").update({home_team_id:d.home,away_team_id:d.away,home_score:null,away_score:null}).eq("id",ex.id);
+  for(const [round,arr] of Object.entries(grouped)){
+    if(arr.length>1){
+      for(const extra of arr.slice(1)){
+        await db.from("matches").delete().eq("id",extra.id);
+      }
+    }
   }
   await loadTournamentData();
-  const semis=cache.matches.filter(m=>m.phase==="knockout"&&m.round_name?.startsWith("Semifinal"));
-  if(semis.length===2&&semis.every(m=>m.home_score!=null&&m.away_score!=null&&m.home_score!==m.away_score)){
-    const win=m=>Number(m.home_score)>Number(m.away_score)?m.home_team_id:m.away_team_id,w1=win(semis[0]),w2=win(semis[1]),final=cache.matches.find(m=>m.phase==="knockout"&&m.round_name==="Final");
-    if(!final){await db.from("matches").insert({tournament_id:t.id,phase:"knockout",round_name:"Final",home_team_id:w1,away_team_id:w2});await loadTournamentData()}
-    else if(final.home_team_id!==w1||final.away_team_id!==w2){await db.from("matches").update({home_team_id:w1,away_team_id:w2,home_score:null,away_score:null}).eq("id",final.id);await loadTournamentData()}
+
+  const q=qualifiedTeams();
+  if(q.length<2)return;
+
+  let desired=[];
+  if(q.length===2){
+    desired=[{round_name:"Final",home:q[0].teamId,away:q[1].teamId}];
+  }else if(q.length>=4){
+    if(cache.groups.length===2){
+      const g1=q.filter(x=>x.groupId===cache.groups[0].id);
+      const g2=q.filter(x=>x.groupId===cache.groups[1].id);
+      desired=[
+        {round_name:"Semifinal 1",home:g1[0]?.teamId,away:g2[1]?.teamId},
+        {round_name:"Semifinal 2",home:g2[0]?.teamId,away:g1[1]?.teamId}
+      ];
+    }else{
+      desired=[
+        {round_name:"Semifinal 1",home:q[0]?.teamId,away:q[q.length-1]?.teamId},
+        {round_name:"Semifinal 2",home:q[1]?.teamId,away:q[q.length-2]?.teamId}
+      ];
+    }
   }
+
+  for(const d of desired){
+    if(!d.home||!d.away)continue;
+    await loadTournamentData();
+    const ex=cache.matches.find(x=>x.phase==="knockout"&&x.round_name===d.round_name);
+
+    if(!ex){
+      const {error}=await db.from("matches").insert({
+        tournament_id:t.id,
+        phase:"knockout",
+        round_name:d.round_name,
+        home_team_id:d.home,
+        away_team_id:d.away
+      });
+      if(error)throw error;
+    }else if(ex.home_team_id!==d.home||ex.away_team_id!==d.away){
+      const {error}=await db.from("matches").update({
+        home_team_id:d.home,
+        away_team_id:d.away,
+        home_score:null,
+        away_score:null
+      }).eq("id",ex.id);
+      if(error)throw error;
+    }
+  }
+
+  await loadTournamentData();
+
+  // När exakt två semifinaler är färdigspelade skapas/uppdateras finalen.
+  const semis=cache.matches
+    .filter(m=>m.phase==="knockout"&&m.round_name?.startsWith("Semifinal"))
+    .sort((a,b)=>(a.round_name||"").localeCompare(b.round_name||""));
+
+  if(semis.length===2 && semis.every(m=>m.home_score!=null&&m.away_score!=null&&Number(m.home_score)!==Number(m.away_score))){
+    const winner=m=>Number(m.home_score)>Number(m.away_score)?m.home_team_id:m.away_team_id;
+    const w1=winner(semis[0]), w2=winner(semis[1]);
+
+    let final=cache.matches.find(m=>m.phase==="knockout"&&m.round_name==="Final");
+    if(!final){
+      const {error}=await db.from("matches").insert({
+        tournament_id:t.id,
+        phase:"knockout",
+        round_name:"Final",
+        home_team_id:w1,
+        away_team_id:w2
+      });
+      if(error)throw error;
+    }else if(final.home_team_id!==w1||final.away_team_id!==w2){
+      const {error}=await db.from("matches").update({
+        home_team_id:w1,
+        away_team_id:w2,
+        home_score:null,
+        away_score:null
+      }).eq("id",final.id);
+      if(error)throw error;
+    }
+  }
+
+  await loadTournamentData();
 }
 function bracketHTML(admin=true){
-  const ms=cache.matches.filter(m=>m.phase==="knockout");if(!ms.length)return'<span class="small">Slutspelet skapas automatiskt när gruppspelet är färdigspelat och kvalificerade lag är klara.</span>';
-  const semis=ms.filter(m=>m.round_name?.startsWith("Semifinal")),final=ms.find(m=>m.round_name==="Final");
-  const card=m=>{const result=m.home_score!=null&&m.away_score!=null?`${m.home_score}–${m.away_score}`:"–";return `<div class="bracket-match"><h3>${esc(m.round_name)}</h3><div class="line"><b>${admin?esc(teamName(m.home_team_id)):publicTeamName(m.home_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.home_score??""}" onchange="updateKnockout('${m.id}','home_score',this.value)">`:`<span>${m.home_score??"–"}</span>`}</div><div class="line"><b>${admin?esc(teamName(m.away_team_id)):publicTeamName(m.away_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.away_score??""}" onchange="updateKnockout('${m.id}','away_score',this.value)">`:`<span>${m.away_score??"–"}</span>`}</div>${!admin?`<div class="winner">Resultat: ${result}</div>`:""}</div>`};
-  return `<div class="bracket"><div class="bracket-col"><h3>Semifinaler</h3>${semis.map(card).join("")||'<span class="small">Ingen semifinal.</span>'}</div><div class="bracket-col"><h3>Final</h3>${final?card(final):'<div class="bracket-match">Vinnarna av semifinalerna går hit automatiskt.</div>'}</div></div>`;
+  const all=cache.matches.filter(m=>m.phase==="knockout");
+  if(!all.length)return'<span class="small">Slutspelet skapas automatiskt när gruppspelet är färdigspelat och kvalificerade lag är klara.</span>';
+
+  // Visa högst en match per slutspelsrunda även om äldre testdata råkat skapa dubletter.
+  const byRound=new Map();
+  for(const m of all){
+    if(!byRound.has(m.round_name)) byRound.set(m.round_name,m);
+  }
+  const ms=[...byRound.values()];
+  const semis=ms.filter(m=>m.round_name?.startsWith("Semifinal")).sort((a,b)=>(a.round_name||"").localeCompare(b.round_name||""));
+  const final=ms.find(m=>m.round_name==="Final");
+
+  const card=m=>{
+    const result=m.home_score!=null&&m.away_score!=null?`${m.home_score}–${m.away_score}`:"–";
+    return `<div class="bracket-match"><h3>${esc(m.round_name)}</h3>
+      <div class="line"><b>${admin?esc(teamName(m.home_team_id)):publicTeamName(m.home_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.home_score??""}" onchange="updateKnockout('${m.id}','home_score',this.value)">`:`<span>${m.home_score??"–"}</span>`}</div>
+      <div class="line"><b>${admin?esc(teamName(m.away_team_id)):publicTeamName(m.away_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.away_score??""}" onchange="updateKnockout('${m.id}','away_score',this.value)">`:`<span>${m.away_score??"–"}</span>`}</div>
+      ${!admin?`<div class="winner">Resultat: ${result}</div>`:""}
+    </div>`;
+  };
+
+  return `<div class="bracket">
+    <div class="bracket-col"><h3>Semifinaler</h3>${semis.map(card).join("")||'<span class="small">Ingen semifinal.</span>'}</div>
+    <div class="bracket-col"><h3>Final</h3>${final?card(final):'<div class="bracket-match">Vinnarna av semifinalerna går hit automatiskt.</div>'}</div>
+  </div>`;
 }
 async function updateKnockout(id,field,val){
   const obj={};obj[field]=val===""?null:Number(val);const {error}=await db.from("matches").update(obj).eq("id",id);if(error)return alert(error.message);
@@ -1391,7 +1492,7 @@ async function loadPublic(){
   const tid=new URLSearchParams(location.search).get("t")||$("publicTournament").value||cache.tournaments[0]?.id;if(!tid)return;
   $("publicTournament").value=tid;
   const linked=!!new URLSearchParams(location.search).get("t");$("publicTournamentPicker").classList.toggle("hidden",linked);
-  const t=cache.tournaments.find(x=>x.id===tid);if(!t)return;$("publicTitle").textContent=t.name;
+  const t=cache.tournaments.find(x=>x.id===tid);if(!t)return;publicTournamentData=t;$("publicTitle").textContent=t.name;
   const [a,b,c,d]=await Promise.all([db.from("public_teams").select("*").eq("tournament_id",tid),db.from("tournament_groups").select("*").eq("tournament_id",tid).order("name"),db.from("matches").select("*").eq("tournament_id",tid).order("match_time"),db.from("group_teams").select("*")]);
   cache.teams=(a.data||[]).map(x=>({id:x.id,class_name:x.class_name}));cache.groups=b.data||[];cache.matches=c.data||[];cache.groupTeams=(d.data||[]).filter(gt=>cache.groups.some(g=>g.id===gt.group_id));
   $("publicStatus").innerHTML=`<div class="kpi"><span class="small">Anmälda lag</span><b>${cache.teams.length}</b></div><div class="kpi"><span class="small">Grupper</span><b>${cache.groups.length}</b></div><div class="kpi"><span class="small">Matcher</span><b>${cache.matches.filter(m=>m.phase==="group").length}</b></div><div class="kpi"><span class="small">Status</span><b style="font-size:16px">${t.published?"Publicerad":"Ej publicerad"}</b></div>`;
