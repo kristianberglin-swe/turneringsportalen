@@ -73,7 +73,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <body>
 <header><div class="wrap"><h1>Turneringsportalen</h1><p>Anmälan, spelschema, resultat, tabeller och automatiskt slutspel.</p></div></header>
 <main class="wrap">
-<div class="modebar">
+<div class="modebar" id="mainModebar">
   <button class="modebtn" id="b-signup" onclick="setMode('signup')">Anmälan</button>
   <button class="modebtn" id="b-public" onclick="setMode('public')">Resultat</button>
   <button class="modebtn" id="b-admin" onclick="setMode('admin')">Admin</button>
@@ -83,7 +83,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   <div class="card">
     <h2 id="signupTitle">Anmäl lag</h2><div id="signupInfo" class="note hidden" style="white-space:pre-wrap;margin-bottom:14px"></div>
     <div id="signupTournamentPicker">
-      <label>Turnering</label><select id="signupTournament" onchange="refreshSignupTitle()"></select>
+      <label>Turnering</label><select id="signupTournament" onchange="signupTournamentChanged()"></select>
     </div>
     <div class="grid2">
       <div>
@@ -111,7 +111,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   <div id="publicContent">
     <div class="card"><h2>Spelschema och resultat</h2><div id="publicMatches"></div></div>
     <div class="card"><h2>Tabeller</h2><div id="publicTables"></div></div>
-    <div class="card"><h2>Slutspel</h2><div id="publicBracket"></div></div>
+    <div class="card"><h2>Slutspel</h2><div id="publicBracket"></div></div><div id="publicTeamPlayers" class="card hidden"></div>
   </div>
 </section>
 
@@ -120,7 +120,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
     <div id="adminHome">
       <div class="card">
         <h2>Admin</h2>
-        <p class="small">Välj om du vill skapa en ny turnering eller administrera en tidigare skapad turnering.</p>
+        <p class="small">Här skapar och administrerar du turneringar. Anmälan sker endast via turneringens anmälningslänk. Resultat skrivs in först när ett spelschema finns.</p>
 
         <div class="grid2">
           <div class="tournament-card">
@@ -154,6 +154,38 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
         <h2>Mina turneringar</h2>
         <div id="tournamentList"></div>
       </div>
+
+      <div class="card">
+        <h2>Klasslistor</h2>
+        <p class="small">Här hanterar du läsår, klasser och elever. Det aktiva läsåret används automatiskt när nya turneringar skapas.</p>
+        <div class="grid2">
+          <div>
+            <label>Aktivt läsår</label>
+            <select id="schoolYearSelect" onchange="selectSchoolYear()"></select>
+            <div class="actions">
+              <button class="secondary" onclick="setActiveSchoolYear()">Gör valt läsår aktivt</button>
+            </div>
+          </div>
+          <div>
+            <label>Skapa nytt läsår</label>
+            <input id="newSchoolYearName" placeholder="2027/2028">
+            <div class="actions">
+              <button class="primary" onclick="createSchoolYear()">Skapa läsår</button>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <div class="grid2">
+          <div>
+            <label>Ny klass</label>
+            <input id="newClassName" placeholder="7A1">
+            <div class="actions"><button class="primary" onclick="createClass()">Lägg till klass</button></div>
+          </div>
+          <div class="small">Klicka på en klass nedan för att lägga till, ändra eller ta bort elever.</div>
+        </div>
+        <div id="classListAdmin" style="margin-top:14px"></div>
+        <div id="classEditor" class="hidden" style="margin-top:16px"></div>
+      </div>
     </div>
 
     <div id="editor" class="hidden">
@@ -172,7 +204,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
           <button id="nav-overview" onclick="showAdminSection('overview')">Översikt</button>
           <button id="nav-signups" onclick="showAdminSection('signups')">Anmälningar</button>
           <button id="nav-schedule" onclick="showAdminSection('schedule')">Grupper & schema</button>
-          <button id="nav-results" onclick="showAdminSection('results')">Resultat</button>
+          <button id="nav-results" class="hidden" onclick="showAdminSection('results')">Resultat</button>
         </div>
       </div>
 
@@ -190,9 +222,11 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
           <h3>Anmälningslänk</h3>
           <p class="small">Skicka denna länk till eleverna. Turneringen är redan vald när länken öppnas.</p>
           <div class="linkbox"><input id="signupLinkPreview" readonly><button class="blue" onclick="copySignupLink()">Kopiera anmälningslänk</button></div>
+          <div id="publicLinkBlock" class="hidden">
           <h3 style="margin-top:18px">Publiklänk</h3>
-          <p class="small">Samma länk används för spelschema och live-resultat.</p>
+          <p class="small">Denna länk används för publicerat spelschema och live-resultat.</p>
           <div class="linkbox"><input id="publicLinkPreview" readonly><button class="blue" onclick="copyPublicLink()">Kopiera publiklänk</button></div>
+          </div>
         </div>
       </div>
 
@@ -251,6 +285,10 @@ const ROSTERS={"7A1": ["Ariamard Philip", "Bernett John", "Ehde Alicia", "Elfstr
 
 let adminTournamentId=null;
 let cache={tournaments:[],teams:[],groups:[],groupTeams:[],matches:[]};
+let schoolYears=[];
+let classRecords=[];
+let classStudents=[];
+let selectedSchoolYearId=null;
 let currentAdminSection="overview";
 
 const $=id=>document.getElementById(id);
@@ -263,12 +301,167 @@ function fmtDateTime(iso){if(!iso)return"";return new Date(iso).toLocaleString("
 function dtLocal(iso){if(!iso)return"";const d=new Date(iso),z=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
 
 function setMode(m){
-  ["signup","public","admin","coach"].forEach(x=>{$(x).classList.toggle("hidden",x!==m);const b=$("b-"+x);if(b)b.classList.toggle("active",x===m)});
-  if(m!=="coach"){const u=new URL(location.href);u.searchParams.set("mode",m);if(m!=="signup"&&m!=="public")u.searchParams.delete("t");u.searchParams.delete("token");history.replaceState({},'',u)}
+  ["signup","public","admin","coach"].forEach(x=>{
+    $(x).classList.toggle("hidden",x!==m);
+    const b=$("b-"+x); if(b)b.classList.toggle("active",x===m);
+  });
+
+  const directLinked=(m==="signup"&&new URLSearchParams(location.search).get("t")) || m==="public" || m==="coach";
+  const modebar=$("mainModebar");
+  if(modebar) modebar.classList.toggle("hidden", m==="admin" || !!directLinked);
+
+  if(m!=="coach"){
+    const u=new URL(location.href);
+    u.searchParams.set("mode",m);
+    if(m!=="signup"&&m!=="public")u.searchParams.delete("t");
+    u.searchParams.delete("token");
+    history.replaceState({},'',u);
+  }
+
   if(m==="admin")loadAdminHome();
   if(m==="signup")prepareSignup();
   if(m==="public")loadPublic();
   if(m==="coach")loadCoach();
+}
+
+async function loadSchoolYears(){
+  const {data,error}=await db.from("school_years").select("*").order("name",{ascending:false});
+  if(error){console.error(error);return}
+  schoolYears=data||[];
+  if(!selectedSchoolYearId){
+    selectedSchoolYearId=(schoolYears.find(y=>y.is_active)||schoolYears[0])?.id||null;
+  }
+  const sel=$("schoolYearSelect");
+  if(sel){
+    sel.innerHTML=schoolYears.map(y=>`<option value="${y.id}" ${y.id===selectedSchoolYearId?"selected":""}>${esc(y.name)}${y.is_active?" (aktivt)":""}</option>`).join("");
+  }
+}
+
+async function loadRosterData(schoolYearId=null){
+  if(!schoolYears.length) await loadSchoolYears();
+  const yearId=schoolYearId || selectedSchoolYearId || (schoolYears.find(y=>y.is_active)||schoolYears[0])?.id;
+  if(!yearId){classRecords=[];classStudents=[];renderClassSelect();return}
+  const {data:classes,error:e1}=await db.from("school_classes").select("*").eq("school_year_id",yearId).order("name");
+  if(e1){console.error(e1);return}
+  classRecords=classes||[];
+  const ids=classRecords.map(c=>c.id);
+  if(ids.length){
+    const {data:students,error:e2}=await db.from("class_students").select("*").in("class_id",ids).order("student_name");
+    if(e2){console.error(e2);return}
+    classStudents=students||[];
+  }else classStudents=[];
+  renderClassSelect();
+}
+
+function renderClassSelect(){
+  const sel=$("classSelect");
+  if(sel){
+    const old=sel.value;
+    sel.innerHTML='<option value="">Välj klass</option>'+classRecords.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+    if(classRecords.some(c=>c.name===old))sel.value=old;
+  }
+}
+
+async function loadClassAdmin(){
+  await loadSchoolYears();
+  await loadRosterData(selectedSchoolYearId);
+  renderClassAdmin();
+}
+
+function renderClassAdmin(){
+  const el=$("classListAdmin");
+  if(!el)return;
+  if(!classRecords.length){el.innerHTML='<div class="note">Inga klasser finns i detta läsår ännu.</div>';return}
+  el.innerHTML=`<div class="grid3">${classRecords.map(c=>{
+    const count=classStudents.filter(s=>s.class_id===c.id).length;
+    return `<div class="team-card"><h3>${esc(c.name)}</h3><div class="small">${count} elever</div><div class="actions"><button class="primary" onclick="openClassEditor('${c.id}')">Redigera klass</button><button class="danger" onclick="deleteClass('${c.id}')">Radera klass</button></div></div>`;
+  }).join("")}</div>`;
+}
+
+async function selectSchoolYear(){
+  selectedSchoolYearId=$("schoolYearSelect").value;
+  await loadRosterData(selectedSchoolYearId);
+  renderClassAdmin();
+  $("classEditor").classList.add("hidden");
+}
+
+async function setActiveSchoolYear(){
+  if(!selectedSchoolYearId)return;
+  await db.from("school_years").update({is_active:false}).neq("id",selectedSchoolYearId);
+  const {error}=await db.from("school_years").update({is_active:true}).eq("id",selectedSchoolYearId);
+  if(error){alert(error.message);return}
+  await loadSchoolYears(); renderClassAdmin();
+}
+
+async function createSchoolYear(){
+  const name=$("newSchoolYearName").value.trim();
+  if(!name)return;
+  const {data,error}=await db.from("school_years").insert({name,is_active:schoolYears.length===0}).select().single();
+  if(error){alert(error.message);return}
+  $("newSchoolYearName").value="";
+  selectedSchoolYearId=data.id;
+  await loadSchoolYears();
+  await loadRosterData(selectedSchoolYearId);
+  renderClassAdmin();
+}
+
+async function createClass(){
+  const name=$("newClassName").value.trim().toUpperCase();
+  if(!name||!selectedSchoolYearId){alert("Välj eller skapa ett läsår först.");return}
+  const {error}=await db.from("school_classes").insert({school_year_id:selectedSchoolYearId,name});
+  if(error){alert(error.message);return}
+  $("newClassName").value="";
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin();
+}
+
+async function deleteClass(id){
+  const c=classRecords.find(x=>x.id===id);
+  if(!c||!confirm(`Radera klassen ${c.name} och hela dess klasslista?`))return;
+  const {error}=await db.from("school_classes").delete().eq("id",id);
+  if(error){alert(error.message);return}
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); $("classEditor").classList.add("hidden");
+}
+
+function openClassEditor(id){
+  const c=classRecords.find(x=>x.id===id); if(!c)return;
+  const students=classStudents.filter(s=>s.class_id===id).sort((a,b)=>a.student_name.localeCompare(b.student_name,"sv"));
+  const el=$("classEditor"); el.classList.remove("hidden");
+  el.innerHTML=`<div class="card"><h3>${esc(c.name)}</h3>
+    <div class="grid2"><div><label>Lägg till elev</label><input id="newStudentName" placeholder="Förnamn Efternamn"><div class="actions"><button class="primary" onclick="addStudent('${id}')">Lägg till elev</button></div></div>
+    <div><label>Klistra in flera elever</label><textarea id="bulkStudents" rows="5" placeholder="En elev per rad"></textarea><div class="actions"><button class="secondary" onclick="addBulkStudents('${id}')">Lägg till listan</button></div></div></div>
+    <hr>
+    <div>${students.map(s=>`<div class="player" style="justify-content:space-between"><span>${esc(s.student_name)}</span><div class="actions" style="margin:0"><button class="secondary" onclick="renameStudent('${s.id}','${esc(s.student_name).replaceAll("'","&#39;")}')">Ändra</button><button class="danger" onclick="deleteStudent('${s.id}','${id}')">Ta bort</button></div></div>`).join("") || '<span class="small">Klassen har inga elever ännu.</span>'}</div>
+  </div>`;
+}
+
+async function addStudent(classId){
+  const name=$("newStudentName").value.trim(); if(!name)return;
+  const {error}=await db.from("class_students").insert({class_id:classId,student_name:name});
+  if(error){alert(error.message);return}
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
+}
+
+async function addBulkStudents(classId){
+  const names=$("bulkStudents").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  if(!names.length)return;
+  const {error}=await db.from("class_students").insert(names.map(student_name=>({class_id:classId,student_name})));
+  if(error){alert(error.message);return}
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
+}
+
+async function renameStudent(id,oldName){
+  const name=prompt("Nytt namn:",oldName); if(!name||name===oldName)return;
+  const {error}=await db.from("class_students").update({student_name:name.trim()}).eq("id",id);
+  if(error){alert(error.message);return}
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin();
+  const s=classStudents.find(x=>x.id===id); if(s)openClassEditor(s.class_id);
+}
+
+async function deleteStudent(id,classId){
+  if(!confirm("Ta bort eleven från klasslistan?"))return;
+  const {error}=await db.from("class_students").delete().eq("id",id);
+  if(error){alert(error.message);return}
+  await loadRosterData(selectedSchoolYearId); renderClassAdmin(); openClassEditor(classId);
 }
 
 async function loadTournaments(){
@@ -285,10 +478,21 @@ async function prepareSignup(){
   await loadTournaments();
   const tid=new URLSearchParams(location.search).get("t");
   if(tid&&cache.tournaments.some(t=>t.id===tid)){
-    $("signupTournament").value=tid;$("signupTournamentPicker").classList.add("hidden");
-  } else $("signupTournamentPicker").classList.remove("hidden");
+    $("signupTournament").value=tid;
+    $("signupTournamentPicker").classList.add("hidden");
+  } else {
+    $("signupTournamentPicker").classList.remove("hidden");
+  }
+  const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
+  await loadRosterData(t?.school_year_id || null);
   refreshSignupTitle();
 }
+async function signupTournamentChanged(){
+  const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
+  await loadRosterData(t?.school_year_id || null);
+  refreshSignupTitle();
+}
+
 function refreshSignupTitle(){
   const t=cache.tournaments.find(x=>x.id===$("signupTournament").value);
   $("signupTitle").textContent=t?`${t.name} – anmäl lag`:"Anmäl lag";
@@ -297,8 +501,13 @@ function refreshSignupTitle(){
   else{info.textContent="";info.classList.add("hidden")}
 }
 function classChanged(){
-  const c=$("classSelect").value;$("teamName").value=c;
-  $("playerList").innerHTML=c?ROSTERS[c].map(n=>`<label class="player"><input type="checkbox" name="p" value="${esc(n)}"><span>${esc(n)}</span></label>`).join(""):'<span class="small">Välj klass först.</span>';
+  const c=$("classSelect").value;
+  $("teamName").value=c;
+  const cls=classRecords.find(x=>x.name===c);
+  const students=cls ? classStudents.filter(s=>s.class_id===cls.id).map(s=>s.student_name).sort((a,b)=>a.localeCompare(b,"sv")) : [];
+  $("playerList").innerHTML=c
+    ? (students.length ? students.map(n=>`<label class="player"><input type="checkbox" name="p" value="${esc(n)}"><span>${esc(n)}</span></label>`).join("") : '<span class="small">Inga elever finns registrerade i klassen.</span>')
+    : '<span class="small">Välj klass först.</span>';
 }
 async function submitSignup(){
   const tid=$("signupTournament").value,c=$("classSelect").value,coach=$("coachName").value.trim(),email=$("coachEmail").value.trim(),players=[...document.querySelectorAll('input[name="p"]:checked')].map(x=>x.value);
@@ -313,7 +522,9 @@ async function loadCoach(){
   const tok=new URLSearchParams(location.search).get("token"),el=$("coachEditor");if(!tok){el.innerHTML='<div class="error">Ingen redigeringslänk.</div>';return}
   const {data,error}=await db.rpc("get_coach_team",{p_edit_token:tok});
   if(error||!data){el.innerHTML='<div class="error">Länken är ogiltig.</div>';return}
-  el.innerHTML=`<h3>${esc(data.class_name)}</h3><label>Coach</label><input id="ceCoach" value="${esc(data.coach_name)}"><label>E-post</label><input id="ceEmail" value="${esc(data.coach_email)}"><label>Spelare</label><div class="player-list">${ROSTERS[data.class_name].map(n=>`<label class="player"><input type="checkbox" name="cp" value="${esc(n)}" ${(data.players||[]).includes(n)?"checked":""}><span>${esc(n)}</span></label>`).join("")}</div><div class="actions"><button class="primary" onclick="saveCoach('${tok}')">Spara ändringar</button></div><div id="ceMsg"></div>`;
+  const tr=cache.tournaments.find(t=>t.id===data.tournament_id) || (await db.from("tournaments").select("*").eq("id",data.tournament_id).single()).data;
+  await loadRosterData(tr?.school_year_id || null);
+  el.innerHTML=`<h3>${esc(data.class_name)}</h3><label>Coach</label><input id="ceCoach" value="${esc(data.coach_name)}"><label>E-post</label><input id="ceEmail" value="${esc(data.coach_email)}"><label>Spelare</label><div class="player-list">${((classRecords.find(c=>c.name===data.class_name)) ? classStudents.filter(s=>s.class_id===classRecords.find(c=>c.name===data.class_name).id).map(s=>s.student_name).sort((a,b)=>a.localeCompare(b,"sv")) : []).map(n=>`<label class="player"><input type="checkbox" name="cp" value="${esc(n)}" ${(data.players||[]).includes(n)?"checked":""}><span>${esc(n)}</span></label>`).join("")}</div><div class="actions"><button class="primary" onclick="saveCoach('${tok}')">Spara ändringar</button></div><div id="ceMsg"></div>`;
 }
 async function saveCoach(tok){
   const players=[...document.querySelectorAll('input[name="cp"]:checked')].map(x=>x.value);
@@ -337,7 +548,7 @@ async function createTournament(){
   const btn=$("createTournamentBtn"),msg=$("createMsg"),name=$("newName").value.trim(),info=$("newInfo").value.trim();
   if(!name){msg.innerHTML='<div class="error">Skriv ett namn på turneringen.</div>';return}
   btn.disabled=true;btn.textContent="Skapar…";msg.innerHTML="";
-  const payload={name,information:info,score_type:"poäng",qualifiers:4,win_points:3,draw_points:1,loss_points:0,published:false};
+  const activeYear=(schoolYears||[]).find(y=>y.is_active) || (schoolYears||[])[0]; const payload={name,information:info,score_type:"poäng",qualifiers:4,win_points:3,draw_points:1,loss_points:0,published:false,school_year_id:activeYear?.id||null};
   const {data,error}=await db.from("tournaments").insert(payload).select().single();
   btn.disabled=false;btn.textContent="Skapa turnering och anmälningslänk";
   if(error){msg.innerHTML=`<div class="error"><b>Kunde inte skapa turneringen.</b><br>${esc(error.message)}</div>`;return}
@@ -349,6 +560,7 @@ async function createTournament(){
 
 async function loadAdminHome(){
   await loadTournaments();
+  await loadClassAdmin();
   renderTournamentList();
   const sel=$("adminTournamentSelect");
   if(sel){
@@ -363,7 +575,7 @@ function openSelectedTournament(){
 
 function renderTournamentList(){
   if(!cache.tournaments.length){$("tournamentList").innerHTML='<span class="small">Inga turneringar ännu.</span>';return}
-  $("tournamentList").innerHTML=`<div class="grid2">${cache.tournaments.map(t=>`<div class="tournament-card"><h3>${esc(t.name)}</h3><div class="actions"><span class="badge">${t.published?"Publicerad":"Ej publicerad"}</span><span class="badge">${esc(t.score_type)}</span></div><div class="actions" style="margin-top:12px"><button class="primary" onclick="openTournament('${t.id}')">Öppna</button><button class="blue" onclick="copyText('${signupUrl(t.id)}')">Anmälningslänk</button><button class="secondary" onclick="copyText('${publicUrl(t.id)}')">Publiklänk</button></div></div>`).join("")}</div>`;
+  $("tournamentList").innerHTML=`<div class="grid2">${cache.tournaments.map(t=>`<div class="tournament-card"><h3>${esc(t.name)}</h3><div class="actions"><span class="badge">${t.published?"Publicerad":"Ej publicerad"}</span><span class="badge">${esc(t.score_type)}</span></div><div class="actions" style="margin-top:12px"><button class="primary" onclick="openTournament('${t.id}')">Administrera</button></div></div>`).join("")}</div>`;
 }
 function closeTournament(){adminTournamentId=null;$("editor").classList.add("hidden");$("adminHome").classList.remove("hidden");loadAdminHome()}
 
@@ -401,17 +613,90 @@ async function deleteCurrentTournament(){
 function copySignupLink(){copyText($("signupLinkPreview").value)} function copyPublicLink(){copyText($("publicLinkPreview").value)}
 
 function showAdminSection(s){
+  if(s==="results" && !canEditResults()){
+    alert("Skapa först lag/grupper och ett spelschema innan du kan skriva in resultat.");
+    s="schedule";
+  }
   currentAdminSection=s;
-  ["overview","signups","schedule","results"].forEach(x=>{$("admin-"+x).classList.toggle("hidden",x!==s);$("nav-"+x).classList.toggle("active",x===s)});
+  ["overview","signups","schedule","results"].forEach(x=>{
+    $("admin-"+x).classList.toggle("hidden",x!==s);
+    $("nav-"+x).classList.toggle("active",x===s);
+  });
 }
-function renderEditor(){renderProgress();renderTeams();renderGroups();renderScheduleMatches();renderResultMatches();renderTables();syncKnockout().then(renderBracket);updatePublishButton()}
+function canEditResults(){
+  const hasTeams=cache.teams.length>=2;
+  const hasGroups=cache.groups.length>0;
+  const hasSchedule=cache.matches.some(m=>m.phase==="group");
+  return hasTeams && hasGroups && hasSchedule;
+}
+
+function updateAdminNavigation(){
+  const resultBtn=$("nav-results");
+  if(resultBtn) resultBtn.classList.toggle("hidden", !canEditResults());
+
+  if(currentAdminSection==="results" && !canEditResults()){
+    currentAdminSection="schedule";
+    showAdminSection("schedule");
+  }
+}
+
+function renderEditor(){
+  renderProgress();
+  renderTeams();
+  renderGroups();
+  renderScheduleMatches();
+  updateAdminNavigation();
+  const plb=$("publicLinkBlock"); if(plb) plb.classList.toggle("hidden", !cache.matches.some(m=>m.phase==="group"));
+
+  if(canEditResults()){
+    renderResultMatches();
+    renderTables();
+    syncKnockout().then(renderBracket);
+  } else {
+    $("adminResultMatches").innerHTML='<div class="note">Resultat kan fyllas i först när det finns anmälda lag, grupper och ett skapat spelschema.</div>';
+    $("adminTables").innerHTML="";
+    $("adminBracket").innerHTML="";
+  }
+
+  const splb=$("schedulePublicLinkBtn"); if(splb) splb.classList.toggle("hidden", !cache.matches.some(m=>m.phase==="group"));
+  updatePublishButton();
+}
 function renderProgress(){
   const t=currentTournament(),hasTeams=cache.teams.length>0,hasGroups=cache.groups.length>0,hasSchedule=cache.matches.some(m=>m.phase==="group"),hasResults=cache.matches.some(m=>m.home_score!=null&&m.away_score!=null);
   const states=[true,hasTeams,hasGroups&&hasSchedule,!!t?.published,hasResults];
   states.forEach((v,i)=>{$("step"+(i+1)).classList.toggle("done",v);$("step"+(i+1)).classList.toggle("active",i===0&&!v)})
 }
 function renderTeams(){
-  $("adminTeams").innerHTML=cache.teams.length?`<div class="grid2">${cache.teams.map(t=>`<div class="team-card"><h3>${esc(t.class_name)}</h3><div><b>Coach:</b> ${esc(t.coach_name)}<br><b>E-post:</b> ${esc(t.coach_email)}</div><div class="actions" style="margin-top:10px"><button class="secondary" onclick="copyText('${coachUrl(t.edit_token)}')">Kopiera coachlänk</button></div></div>`).join("")}</div>`:'<div class="note">Inga klasser har anmält sig ännu. Kopiera anmälningslänken under Översikt och skicka den till eleverna.</div>';
+  $("adminTeams").innerHTML=cache.teams.length
+    ? `<div class="grid2">${cache.teams.map(t=>`<div class="team-card"><h3>${esc(t.class_name)}</h3><div><b>Coach:</b> ${esc(t.coach_name)}<br><b>E-post:</b> ${esc(t.coach_email)}</div><div class="actions" style="margin-top:10px"><button class="primary" onclick="editRegisteredTeam('${t.id}')">Redigera anmälda elever</button><button class="secondary" onclick="copyText('${coachUrl(t.edit_token)}')">Kopiera coachlänk</button></div></div>`).join("")}</div><div id="registeredTeamEditor" style="margin-top:16px"></div>`
+    : '<div class="note">Inga klasser har anmält sig ännu. Kopiera anmälningslänken under Översikt och skicka den till eleverna.</div>';
+}
+
+async function editRegisteredTeam(teamId){
+  const team=cache.teams.find(t=>t.id===teamId);
+  if(!team)return;
+  const t=currentTournament();
+  await loadRosterData(t?.school_year_id || null);
+  const cls=classRecords.find(c=>c.name===team.class_name);
+  const roster=cls ? classStudents.filter(s=>s.class_id===cls.id).map(s=>s.student_name).sort((a,b)=>a.localeCompare(b,"sv")) : [];
+  const {data,error}=await db.from("players").select("*").eq("team_id",teamId).order("player_name");
+  if(error){alert(error.message);return}
+  const selected=(data||[]).map(p=>p.player_name);
+  const el=$("registeredTeamEditor");
+  el.innerHTML=`<div class="card"><h3>${esc(team.class_name)} – anmälda elever</h3>
+    <div class="player-list">${roster.map(n=>`<label class="player"><input type="checkbox" name="adminteamplayer" value="${esc(n)}" ${selected.includes(n)?"checked":""}><span>${esc(n)}</span></label>`).join("")}</div>
+    <div class="actions"><button class="primary" onclick="saveRegisteredTeam('${teamId}')">Spara anmälda elever</button><button class="secondary" onclick="$('registeredTeamEditor').innerHTML=''">Stäng</button></div>
+    <div id="registeredTeamMsg"></div></div>`;
+}
+
+async function saveRegisteredTeam(teamId){
+  const players=[...document.querySelectorAll('input[name="adminteamplayer"]:checked')].map(x=>x.value);
+  if(players.length<2){$("registeredTeamMsg").innerHTML='<div class="error">Minst två elever måste vara anmälda.</div>';return}
+  const del=await db.from("players").delete().eq("team_id",teamId);
+  if(del.error){$("registeredTeamMsg").innerHTML=`<div class="error">${esc(del.error.message)}</div>`;return}
+  const ins=await db.from("players").insert(players.map(player_name=>({team_id:teamId,player_name})));
+  if(ins.error){$("registeredTeamMsg").innerHTML=`<div class="error">${esc(ins.error.message)}</div>`;return}
+  $("registeredTeamMsg").innerHTML='<div class="success">De anmälda eleverna är uppdaterade.</div>';
 }
 
 async function addGroup(){
@@ -460,6 +745,20 @@ async function autoScheduleGroups(){
   await reloadEditorData();
 }
 function teamName(id){return cache.teams.find(t=>t.id===id)?.class_name||"TBD"}
+function publicTeamName(id){
+  const n=teamName(id);
+  return `<button class="secondary" style="padding:5px 8px" onclick="showPublicTeam('${id}')">${esc(n)}</button>`;
+}
+async function showPublicTeam(teamId){
+  const team=cache.teams.find(t=>t.id===teamId);
+  if(!team)return;
+  const {data,error}=await db.from("public_team_players").select("*").eq("team_id",teamId).order("player_name");
+  const el=$("publicTeamPlayers");
+  if(error){el.classList.remove("hidden");el.innerHTML=`<div class="error">${esc(error.message)}</div>`;return}
+  el.classList.remove("hidden");
+  el.innerHTML=`<h2>${esc(team.class_name)} – anmälda elever</h2><div class="player-list">${(data||[]).map(p=>`<div class="player">${esc(p.player_name)}</div>`).join("") || '<span class="small">Inga elever registrerade.</span>'}</div><div class="actions"><button class="secondary" onclick="$('publicTeamPlayers').classList.add('hidden')">Stäng</button></div>`;
+  el.scrollIntoView({behavior:"smooth",block:"start"});
+}
 function groupName(id){return cache.groups.find(g=>g.id===id)?.name||""}
 function scheduleTable(editableTime=false,scoreInputs=false){
   const ms=cache.matches.filter(m=>m.phase==="group").sort((a,b)=>(a.match_time||"").localeCompare(b.match_time||"")||(a.court||"").localeCompare(b.court||""));
@@ -467,14 +766,15 @@ function scheduleTable(editableTime=false,scoreInputs=false){
   return `<div class="tablewrap"><table><thead><tr><th>Tid</th><th>Plan</th><th>Grupp</th><th>Lag 1</th><th>Resultat</th><th>Lag 2</th>${editableTime?'<th></th>':""}</tr></thead><tbody>${ms.map(m=>`<tr>
     <td>${editableTime?`<input type="datetime-local" value="${dtLocal(m.match_time)}" onchange="updateMatch('${m.id}','match_time',this.value)">`:esc(fmtDateTime(m.match_time))}</td>
     <td>${editableTime?`<input value="${esc(m.court||"")}" onchange="updateMatch('${m.id}','court',this.value)">`:esc(m.court||"")}</td>
-    <td>${esc(groupName(m.group_id))}</td><td><b>${esc(teamName(m.home_team_id))}</b></td>
+    <td>${esc(groupName(m.group_id))}</td><td><b>${$("public").classList.contains("hidden")?esc(teamName(m.home_team_id)):publicTeamName(m.home_team_id)}</b></td>
     <td>${scoreInputs?`<div style="display:flex;gap:5px;align-items:center"><input class="score" type="number" min="0" value="${m.home_score??""}" onchange="updateMatch('${m.id}','home_score',this.value)"><span>–</span><input class="score" type="number" min="0" value="${m.away_score??""}" onchange="updateMatch('${m.id}','away_score',this.value)"></div>`:`<b>${m.home_score==null||m.away_score==null?"–":m.home_score+"–"+m.away_score}</b>`}</td>
-    <td><b>${esc(teamName(m.away_team_id))}</b></td>${editableTime?`<td><button class="danger" onclick="deleteMatch('${m.id}')">Radera</button></td>`:""}
+    <td><b>${$("public").classList.contains("hidden")?esc(teamName(m.away_team_id)):publicTeamName(m.away_team_id)}</b></td>${editableTime?`<td><button class="danger" onclick="deleteMatch('${m.id}')">Radera</button></td>`:""}
   </tr>`).join("")}</tbody></table></div>`;
 }
 function renderScheduleMatches(){$("adminScheduleMatches").innerHTML=scheduleTable(true,false)}
 function renderResultMatches(){$("adminResultMatches").innerHTML=scheduleTable(false,true)}
 async function updateMatch(id,field,val){
+  if((field==="home_score"||field==="away_score") && !canEditResults()){ alert("Resultat kan fyllas i först när spelschemat är skapat."); return; }
   const obj={};obj[field]=(field==="home_score"||field==="away_score")?(val===""?null:Number(val)):(field==="match_time"?(val?new Date(val).toISOString():null):val);
   const {error}=await db.from("matches").update(obj).eq("id",id);if(error)return alert(error.message);
   await reloadEditorData();
@@ -510,7 +810,7 @@ function completedGroup(gid){
 function tablesHTML(){
   const t=currentTournament();if(!cache.groups.length)return'<span class="small">Inga grupper.</span>';
   const per=Math.max(1,Math.floor(Number(t.qualifiers||4)/cache.groups.length));
-  return cache.groups.map(g=>`<h3>${esc(g.name)}</h3><div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>Spelade</th><th>Vinster</th><th>Oavgjorda</th><th>Förluster</th><th>Gjorda ${esc(t.score_type)}</th><th>Insläppta ${esc(t.score_type)}</th><th>Skillnad</th><th>Tabellpoäng</th><th>Status</th></tr></thead><tbody>${standings(g.id).map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.team)}</b></td><td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td><b>${r.pts}</b></td><td>${completedGroup(g.id)&&i<per?'<span class="badge qualify">Till slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div>`).join("");
+  return cache.groups.map(g=>`<h3>${esc(g.name)}</h3><div class="tablewrap"><table><thead><tr><th>#</th><th>Lag</th><th>Spelade</th><th>Vinster</th><th>Oavgjorda</th><th>Förluster</th><th>Gjorda ${esc(t.score_type)}</th><th>Insläppta ${esc(t.score_type)}</th><th>Skillnad</th><th>Tabellpoäng</th><th>Status</th></tr></thead><tbody>${standings(g.id).map((r,i)=>`<tr><td>${i+1}</td><td><b>${$("public").classList.contains("hidden")?esc(r.team):publicTeamName(r.id)}</b></td><td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.for}</td><td>${r.against}</td><td>${r.diff>0?"+":""}${r.diff}</td><td><b>${r.pts}</b></td><td>${completedGroup(g.id)&&i<per?'<span class="badge qualify">Till slutspel</span>':""}</td></tr>`).join("")}</tbody></table></div>`).join("");
 }
 function renderTables(){$("adminTables").innerHTML=tablesHTML()}
 
@@ -549,7 +849,7 @@ async function syncKnockout(){
 function bracketHTML(admin=true){
   const ms=cache.matches.filter(m=>m.phase==="knockout");if(!ms.length)return'<span class="small">Slutspelet skapas automatiskt när gruppspelet är färdigspelat och kvalificerade lag är klara.</span>';
   const semis=ms.filter(m=>m.round_name?.startsWith("Semifinal")),final=ms.find(m=>m.round_name==="Final");
-  const card=m=>{const result=m.home_score!=null&&m.away_score!=null?`${m.home_score}–${m.away_score}`:"–";return `<div class="bracket-match"><h3>${esc(m.round_name)}</h3><div class="line"><b>${esc(teamName(m.home_team_id))}</b>${admin?`<input class="score" type="number" min="0" value="${m.home_score??""}" onchange="updateKnockout('${m.id}','home_score',this.value)">`:`<span>${m.home_score??"–"}</span>`}</div><div class="line"><b>${esc(teamName(m.away_team_id))}</b>${admin?`<input class="score" type="number" min="0" value="${m.away_score??""}" onchange="updateKnockout('${m.id}','away_score',this.value)">`:`<span>${m.away_score??"–"}</span>`}</div>${!admin?`<div class="winner">Resultat: ${result}</div>`:""}</div>`};
+  const card=m=>{const result=m.home_score!=null&&m.away_score!=null?`${m.home_score}–${m.away_score}`:"–";return `<div class="bracket-match"><h3>${esc(m.round_name)}</h3><div class="line"><b>${admin?esc(teamName(m.home_team_id)):publicTeamName(m.home_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.home_score??""}" onchange="updateKnockout('${m.id}','home_score',this.value)">`:`<span>${m.home_score??"–"}</span>`}</div><div class="line"><b>${admin?esc(teamName(m.away_team_id)):publicTeamName(m.away_team_id)}</b>${admin?`<input class="score" type="number" min="0" value="${m.away_score??""}" onchange="updateKnockout('${m.id}','away_score',this.value)">`:`<span>${m.away_score??"–"}</span>`}</div>${!admin?`<div class="winner">Resultat: ${result}</div>`:""}</div>`};
   return `<div class="bracket"><div class="bracket-col"><h3>Semifinaler</h3>${semis.map(card).join("")||'<span class="small">Ingen semifinal.</span>'}</div><div class="bracket-col"><h3>Final</h3>${final?card(final):'<div class="bracket-match">Vinnarna av semifinalerna går hit automatiskt.</div>'}</div></div>`;
 }
 async function updateKnockout(id,field,val){
@@ -561,6 +861,7 @@ async function reloadEditorData(){await loadTournaments();await loadTournamentDa
 function renderPublicIfOpen(){if(!$("public").classList.contains("hidden"))loadPublic()}
 
 async function loadPublic(){
+  const pbox=$("publicTeamPlayers"); if(pbox){pbox.classList.add("hidden");pbox.innerHTML="";}
   await loadTournaments();
   const tid=new URLSearchParams(location.search).get("t")||$("publicTournament").value||cache.tournaments[0]?.id;if(!tid)return;
   $("publicTournament").value=tid;
@@ -575,7 +876,7 @@ async function loadPublic(){
 }
 
 async function boot(){
-  Object.keys(ROSTERS).forEach(c=>$("classSelect").insertAdjacentHTML("beforeend",`<option value="${esc(c)}">${esc(c)}</option>`));
+  
   await loadTournaments();
   const m=new URLSearchParams(location.search).get("mode")||"signup";setMode(["signup","public","admin","coach"].includes(m)?m:"signup");
 }
