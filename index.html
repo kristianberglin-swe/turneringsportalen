@@ -348,7 +348,9 @@ async function loadSchoolYears(){
   if(error){
     console.error("Kunde inte läsa läsår:",error);
     const summary=$("rosterSummary");
-    if(summary) summary.innerHTML=`<div class="error">Kunde inte läsa läsår: ${esc(error.message)}</div>`;
+    if(summary) summary.innerHTML=`<div class="error"><b>Kunde inte läsa läsår från Supabase.</b><br>${esc(error.message)}</div>`;
+    const sel=$("schoolYearSelect");
+    if(sel) sel.innerHTML='<option value="">Fel vid hämtning</option>';
     return false;
   }
 
@@ -1067,6 +1069,15 @@ async function loadPublic(){
 }
 
 async function boot(){
+  // Den här versionen använder inget admin-login. Rensa eventuell gammal Supabase-session
+  // så att alla databasfrågor använder anon-policys konsekvent.
+  try{
+    const {data:sess}=await db.auth.getSession();
+    if(sess?.session) await db.auth.signOut();
+  }catch(e){
+    console.warn("Kunde inte rensa gammal session:",e);
+  }
+
   await loadTournaments();
   const params=new URLSearchParams(location.search);
   let m=params.get("mode")||"admin";
