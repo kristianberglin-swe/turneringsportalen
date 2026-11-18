@@ -459,6 +459,11 @@ footer{color:#71827b}
       <div id="admin-signups" class="adminsection hidden">
         <div class="card">
           <h2>2. Anmälda lag</h2>
+          <div class="actions" style="margin:10px 0 14px;align-items:center">
+            <button class="primary" id="exportGoogleSheetsBtn" onclick="exportGoogleSheets()">⬇ Exportera till Google Kalkylark (CSV)</button>
+            <span class="small">Två filer: anmälda elever och sammanställning per klass.</span>
+          </div>
+          <div id="exportGoogleSheetsStatus" aria-live="polite"></div>
           <div id="adminTeams"></div>
         </div>
       </div>
@@ -1273,6 +1278,71 @@ function renderTeams(){
   $("adminTeams").innerHTML=cache.teams.length
     ? `<div class="grid2">${cache.teams.map(t=>`<div class="team-card"><h3>${esc(t.class_name)}</h3><div><b>Coach:</b> ${esc(t.coach_name)}<br><b>E-post:</b> ${esc(t.coach_email)}</div><div class="actions" style="margin-top:10px"><button class="primary" onclick="editRegisteredTeam('${t.id}')">Redigera anmälda elever</button><button class="secondary" onclick="copyText('${coachUrl(t.edit_token)}')">Kopiera coachlänk</button></div></div>`).join("")}</div><div id="registeredTeamEditor" style="margin-top:16px"></div>`
     : '<div class="note">Inga klasser har anmält sig ännu. Kopiera anmälningslänken under Översikt och skicka den till eleverna.</div>';
+}
+
+// Exporterar enbart faktiskt anmälda elever, inte hela klasslistorna.
+// CSV med UTF-8 BOM och semikolon fungerar vid svensk import i Google Kalkylark.
+function csvCell(value){
+  const str=String(value??"");
+  // Förhindra att namn som börjar med formeltecken exekveras i kalkylark.
+  const safe=/^[\s\u0000-\u001f]*[=+@\-]/.test(str)?"'"+str:str;
+  return '"'+safe.replace(/"/g,'""')+'"';
+}
+function csvText(rows){
+  return '\ufeff'+rows.map(row=>row.map(csvCell).join(';')).join('\r\n')+'\r\n';
+}
+function downloadCSV(filename,rows){
+  const blob=new Blob([csvText(rows)],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+async function exportGoogleSheets(){
+  const status=$('exportGoogleSheetsStatus');
+  const btn=$('exportGoogleSheetsBtn');
+  const t=currentTournament();
+  if(!t){status.innerHTML='<div class="error">Välj en turnering först.</div>';return;}
+  btn.disabled=true;
+  status.innerHTML='<div class="note">Hämtar anmälda elever från databasen…</div>';
+  try{
+    // Läs om lag från Supabase så exporten inte bygger på en gammal vy.
+    const {data:teams,error:teamError}=await db.from('teams')
+      .select('id,class_name,coach_name').eq('tournament_id',t.id).order('class_name');
+    if(teamError)throw teamError;
+    if(!teams?.length){status.innerHTML='<div class="note">Inga lag är anmälda till denna turnering.</div>';return;}
+    const sortedTeams=[...teams].sort((a,b)=>a.class_name.localeCompare(b.class_name,'sv',{numeric:true}));
+    // Hämta spelare per lag; undvik att tappa rader vid Supabases standardgräns på 1000.
+    const all=await Promise.all(sortedTeams.map(async team=>{
+      let names=[],from=0;
+      while(true){
+        const {data,error}=await db.from('players').select('player_name')
+          .eq('team_id',team.id).order('player_name').range(from,from+999);
+        if(error)throw error;
+        names.push(...(data||[]).map(p=>p.player_name));
+        if(!data||data.length<1000)break;
+        from+=1000;
+      }
+      return {team,names:names.sort((a,b)=>a.localeCompare(b,'sv'))};
+    }));
+    const students=[['Klass','Elev','Turnering','Coach']];
+    const summary=[['Klass','Antal anmälda elever','Turnering','Coach']];
+    for(const {team,names} of all){
+      for(const name of names)students.push([team.class_name,name,t.name,team.coach_name||'']);
+      summary.push([team.class_name,String(names.length),t.name,team.coach_name||'']);
+    }
+    const total=students.length-1;
+    if(!total){status.innerHTML='<div class="note">Inga elever är anmälda ännu.</div>';return;}
+    const basename=(t.name||'turnering').normalize('NFKD').replace(/[^a-zA-Z0-9åäöÅÄÖ_-]+/g,'_').slice(0,55);
+    downloadCSV(basename+'_anmalda_elever.csv',students);
+    // Vissa webbläsare kan be om tillstånd för flera nedladdningar.
+    setTimeout(()=>downloadCSV(basename+'_sammanstallning.csv',summary),350);
+    status.innerHTML=`<div class="success">Export klart: ${total} anmälda elever från ${sortedTeams.length} klasser. Två CSV-filer har skapats. Importera dem via <b>Arkiv → Importera → Ladda upp</b> i Google Kalkylark. Om bara en fil laddas ned, tillåt flera nedladdningar för webbplatsen.</div>`;
+  }catch(err){
+    console.error('Exportfel',err);
+    status.innerHTML=`<div class="error">Exporten misslyckades: ${esc(err.message||String(err))}</div>`;
+  }finally{btn.disabled=false;}
 }
 
 async function editRegisteredTeam(teamId){
